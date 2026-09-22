@@ -392,6 +392,16 @@ export default function EmployeesPage() {
 
   const refreshEmployees = () => { void loadEmployees(); };
 
+  const openEmployeeDetails = async (employee: Employee) => {
+    setDetailEmp(employee);
+    try {
+      const response = await api.get<EmployeeApiRecord>(`/employees/${employee.id}`);
+      setDetailEmp(mapEmployee(response.data, 0));
+    } catch {
+      toast('Could not load the latest employee details.', 'error');
+    }
+  };
+
   const handleImportConfirm = async (imported: Employee[]) => {
     let created = 0;
     for (const employee of imported) {
@@ -549,7 +559,7 @@ export default function EmployeesPage() {
                         <span className="text-[11px] font-bold">{emp.initials}</span>
                       </div>
                       <div>
-                        <button onClick={() => setDetailEmp(emp)} className="font-semibold text-ink hover:text-primary transition-colors text-left">{emp.name}</button>
+                        <button onClick={() => void openEmployeeDetails(emp)} className="font-semibold text-ink hover:text-primary transition-colors text-left">{emp.name}</button>
                         <p className="text-[11px] text-muted">{emp.location}</p>
                       </div>
                     </div>
@@ -561,11 +571,11 @@ export default function EmployeesPage() {
                   <td className="table-cell"><span className={`badge capitalize ${statusMeta[emp.status].color}`}>{statusMeta[emp.status].label}</span></td>
                   <td className="table-cell text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <button onClick={() => setDetailEmp(emp)} className="min-h-10 min-w-10 p-2.5 rounded-md hover:bg-primary-surface transition-colors cursor-pointer" aria-label={`View ${emp.name}`} title="View details"><Eye size={15} className="text-muted mx-auto" /></button>
+                      <button onClick={() => void openEmployeeDetails(emp)} className="min-h-10 min-w-10 p-2.5 rounded-md hover:bg-primary-surface transition-colors cursor-pointer" aria-label={`View ${emp.name}`} title="View details"><Eye size={15} className="text-muted mx-auto" /></button>
                       <div className="relative">
                         <button onClick={() => setActionEmployee(actionEmployee === emp.id ? null : emp.id)} className="min-h-10 min-w-10 p-2.5 rounded-md hover:bg-primary-surface transition-colors cursor-pointer" aria-label={`Actions for ${emp.name}`} title="More actions"><MoreHorizontal size={16} className="text-muted mx-auto" /></button>
                         {actionEmployee === emp.id && <div className="absolute right-0 top-full mt-1 w-36 rounded-xl bg-canvas border border-hairline shadow-xl z-20 py-1 text-left">
-                          <button onClick={() => { setDetailEmp(emp); setActionEmployee(null); }} className="w-full px-3 py-2 text-xs text-body hover:bg-surface-soft">View details</button>
+                          <button onClick={() => { void openEmployeeDetails(emp); setActionEmployee(null); }} className="w-full px-3 py-2 text-xs text-body hover:bg-surface-soft">View details</button>
                           <a href={`mailto:${emp.email}`} onClick={() => setActionEmployee(null)} className="block w-full px-3 py-2 text-xs text-body hover:bg-surface-soft">Send email</a>
                           <button onClick={async () => {
                             try {
