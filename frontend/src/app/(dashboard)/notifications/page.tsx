@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import api from '@/lib/api';
 import {
   Bell, CheckCircle2, Clock, AlertTriangle, FileText, MessageCircle, Users, MoreHorizontal,
   Search, CheckCheck, X, Trash2, Eye, Settings,
@@ -20,6 +21,8 @@ type Notification = {
   color: string;
   category: 'leave' | 'payroll' | 'alert' | 'onboarding' | 'expense' | 'document' | 'system' | 'review';
   group: 'today' | 'yesterday' | 'older';
+  iconKey?: string;
+  created_at?: string;
 };
 
 const initialNotifications: Notification[] = [
@@ -46,7 +49,8 @@ const categoryLabels: Record<string, string> = { leave: 'Leave', payroll: 'Payro
 const groupLabels: Record<string, string> = { today: 'Today', yesterday: 'Yesterday', older: 'Earlier' };
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState(initialNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
@@ -54,6 +58,9 @@ export default function NotificationsPage() {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [deleteAll, setDeleteAll] = useState(false);
   const { toast } = useToast();
+  const iconByKey: Record<string, typeof Bell> = { bell: Bell, 'file-text': FileText, 'check-circle': CheckCircle2, 'alert-triangle': AlertTriangle, users: Users, 'message-circle': MessageCircle, clock: Clock };
+  const loadNotifications = async () => { setLoading(true); try { const response = await api.get('/notifications'); setNotifications((response.data.items ?? []).map((n: any) => ({ ...n, icon: iconByKey[n.iconKey] ?? Bell }))); } catch { toast('Unable to load notifications.', 'error'); } finally { setLoading(false); } };
+  useEffect(() => { void loadNotifications(); }, []);
 
   const filtered = useMemo(() => notifications.filter((n) => {
     const matchFilter = filter === 'all' || n.unread;
@@ -69,10 +76,11 @@ export default function NotificationsPage() {
     return groups;
   }, [filtered]);
 
-  const markRead = (id: string) => setNotifications((rows) => rows.map((n) => n.id === id ? { ...n, unread: false } : n));
-  const markAllRead = () => { setNotifications((rows) => rows.map((n) => ({ ...n, unread: false }))); toast('All notifications marked as read.', 'success'); };
-  const markReadGroup = (group: string) => { setNotifications((rows) => rows.map((n) => n.group === group ? { ...n, unread: false } : n)); toast(`${groupLabels[group]} notifications marked as read.`, 'success'); };
-  const deleteNotification = (id: string) => { setNotifications((rows) => rows.filter((n) => n.id !== id)); if (selected === id) setSelected(null); toast('Notification removed.', 'success'); };
+  const markRead = async (id: string) => { try { await api.patch(`/notifications/${id}`); setNotifications((rows) => rows.map((n) => n.id === id ? { ...n, unread: false } : n)); } catch { toast('Unable to mark notification as read.', 'error'); } };
+  const markAllRead = async () => { try { await api.post('/notifications/read-all'); setNotifications((rows) => rows.map((n) => ({ ...n, unread: false }))); toast('All notifications marked as read.', 'success'); } catch { toast('Unable to update notifications.', 'error'); } };
+  const markReadGroup = async (group: string) => { const ids = notifications.filter(n => n.group === group && n.unread).map(n => n.id); try { await Promise.all(ids.map(id => api.patch(`/notifications/${id}`))); setNotifications((rows) => rows.map((n) => n.group === group ? { ...n, unread: false } : n)); toast(`${groupLabels[group]} notifications marked as read.`, 'success'); } catch { toast('Unable to update notifications.', 'error'); } };
+  const deleteNotification = async (id: string) => { try { await api.delete(`/notifications/${id}`); setNotifications((rows) => rows.filter((n) => n.id !== id)); if (selected === id) setSelected(null); toast('Notification removed.', 'success'); } catch { toast('Unable to remove notification.', 'error'); } };
+  const clearAllNotifications = async () => { try { await api.delete('/notifications/clear-all'); setNotifications([]); setSelected(null); setDeleteAll(false); toast('All notifications cleared.', 'success'); } catch { toast('Unable to clear notifications.', 'error'); } };
   const selectedNotif = notifications.find((n) => n.id === selected);
 
   return <div>
@@ -92,7 +100,7 @@ export default function NotificationsPage() {
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
       {/* Notification list */}
       <div className="lg:col-span-3 card p-0 overflow-hidden">
-        {Object.entries(grouped).map(([group, items]) => {
+        {loading ? <div className="p-8 text-center text-sm text-muted">Loading notifications…</div> : Object.entries(grouped).map(([group, items]) => {
           if (items.length === 0) return null;
           return (
             <div key={group}>
@@ -194,7 +202,7 @@ export default function NotificationsPage() {
         description="All notifications will be permanently removed."
         confirmLabel="Clear all"
         variant="danger"
-        onConfirm={() => { setNotifications([]); setSelected(null); setDeleteAll(false); toast('All notifications cleared.', 'success'); }}
+        onConfirm={clearAllNotifications}
         onCancel={() => setDeleteAll(false)}
       />
     )}

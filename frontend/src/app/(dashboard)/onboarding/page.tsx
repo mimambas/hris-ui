@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import api from '@/lib/api';
 import { UserPlus, CheckCircle2, Clock, AlertTriangle, Plus, ArrowRight, Search, X, Check, UserRound, ChevronRight } from 'lucide-react';
 import ModuleHeader from '@/components/ui/ModuleHeader';
 import StatCard from '@/components/ui/StatCard';
@@ -9,7 +10,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { useToast } from '@/components/ui/Toast';
 
 type Task = { id: string; label: string; owner: string; due: string; done: boolean; overdue?: boolean };
-type Person = { id: string; name: string; role: string; department: string; start: string; status: 'On track' | 'Completed' | 'At risk'; initials: string; buddy: string; tasks: Task[] };
+type Person = { id: string; name: string; role: string; department: string; start: string; start_date?: string; status: 'On track' | 'Completed' | 'At risk'; initials: string; buddy: string; tasks: Task[] };
 
 const taskTemplates: { id: string; label: string; owner: string }[] = [
   { id: 'welcome', label: 'Send welcome email', owner: 'HR' },
@@ -53,7 +54,7 @@ function NewOnboardingModal({ onClose, onCreate }: { onClose: () => void; onCrea
     const role = String(data.get('role') || '').trim();
     const start = String(data.get('start') || '').trim();
     if (!name || !role || !start) { setError('Name, role, and start date are required.'); return; }
-    onCreate({ id: `ONB-${String(Date.now()).slice(-3)}`, name, role, department: String(data.get('department') || 'Engineering'), start: new Date(`${start}T00:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }), status: 'On track', initials: name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase(), buddy: 'Not assigned', tasks: createTasks(0) });
+    onCreate({ id: `ONB-${String(Date.now()).slice(-3)}`, name, role, department: String(data.get('department') || 'Engineering'), start: new Date(`${start}T00:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }), start_date: start, status: 'On track', initials: name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase(), buddy: 'Not assigned', tasks: createTasks(0) });
   };
   return <div className="fixed inset-0 z-[80] flex items-center justify-center p-4"><div className="absolute inset-0 bg-ink/40" onClick={onClose} /><form onSubmit={submit} className="relative w-full max-w-md rounded-2xl bg-canvas border border-hairline shadow-2xl p-6"><div className="flex items-center justify-between mb-5"><div><h2 className="text-base font-bold text-ink">Start onboarding</h2><p className="text-xs text-muted mt-1">Create a checklist for a new hire</p></div><button type="button" onClick={onClose} aria-label="Close onboarding form" className="btn-secondary min-h-10 min-w-10 px-3"><X size={15} /></button></div><div className="space-y-4"><label className="block text-sm font-semibold text-ink">Employee name<input name="name" autoFocus className="input-field mt-1.5" placeholder="e.g. Putri Ananda" /></label><label className="block text-sm font-semibold text-ink">Role<input name="role" className="input-field mt-1.5" placeholder="e.g. Product Manager" /></label><label className="block text-sm font-semibold text-ink">Department<select name="department" defaultValue="Engineering" className="input-field mt-1.5"><option>Engineering</option><option>Design</option><option>Finance</option><option>HR</option><option>Marketing</option><option>Customer Success</option></select></label><label className="block text-sm font-semibold text-ink">Start date<input name="start" type="date" className="input-field mt-1.5" /></label>{error && <p role="alert" className="text-xs text-semantic-down">{error}</p>}</div><div className="flex justify-end gap-3 mt-6 pt-4 border-t border-hairline-soft"><button type="button" onClick={onClose} className="btn-secondary text-sm">Cancel</button><button type="submit" className="btn-cta text-sm gap-2"><UserPlus size={14} /> Create onboarding</button></div></form></div>;
 }
@@ -64,30 +65,27 @@ function ChecklistModal({ person, onClose, onToggle }: { person: Person; onClose
 }
 
 export default function OnboardingPage() {
-  const [people, setPeople] = useState(initialPeople);
+  const [people, setPeople] = useState<Person[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | Person['status']>('all');
   const [showNew, setShowNew] = useState(false);
   const [selected, setSelected] = useState<Person | null>(null);
   const [confirmComplete, setConfirmComplete] = useState<Person | null>(null);
   const { toast } = useToast();
+  const loadPeople = async () => { setLoading(true); try { const response = await api.get('/onboarding'); setPeople(response.data.items ?? []); } catch { toast('Unable to load onboarding records.', 'error'); } finally { setLoading(false); } };
+  useEffect(() => { void loadPeople(); }, []);
 
   const filtered = useMemo(() => people.filter((person) => `${person.name} ${person.role} ${person.department}`.toLowerCase().includes(search.toLowerCase())).filter((person) => statusFilter === 'all' || person.status === statusFilter), [people, search, statusFilter]);
   const active = people.filter((person) => person.status !== 'Completed').length;
   const atRisk = people.filter((person) => person.status === 'At risk').length;
   const avgProgress = Math.round(people.reduce((sum, person) => sum + person.tasks.filter((task) => task.done).length / person.tasks.length * 100, 0) / people.length);
 
-  const addPerson = (person: Person) => { setPeople((rows) => [person, ...rows]); setShowNew(false); toast(`Onboarding created for ${person.name}.`, 'success'); };
-  const toggleTask = (personId: string, taskId: string) => {
-    setPeople((rows) => rows.map((person) => {
-      if (person.id !== personId) return person;
-      const tasks = person.tasks.map((task) => task.id === taskId ? { ...task, done: !task.done } : task);
-      const complete = tasks.every((task) => task.done);
-      return { ...person, tasks, status: complete ? 'Completed' : person.status === 'Completed' ? 'On track' : person.status };
-    }));
-    setSelected((current) => current?.id === personId ? { ...current, tasks: current.tasks.map((task) => task.id === taskId ? { ...task, done: !task.done } : task) } : current);
+  const addPerson = async (person: Person) => { try { const response = await api.post('/onboarding', { name: person.name, role: person.role, department: person.department, start_date: person.start_date ?? person.start.split(' ').reverse().join('-') }); setPeople((rows) => [response.data, ...rows]); setShowNew(false); toast(`Onboarding created for ${person.name}.`, 'success'); } catch { toast('Unable to create onboarding.', 'error'); } };
+  const toggleTask = async (personId: string, taskId: string) => {
+    try { const response = await api.patch(`/onboarding/${personId}/tasks/${taskId}`); setPeople((rows) => rows.map((person) => { if (person.id !== personId) return person; const tasks = person.tasks.map((task) => task.id === taskId ? { ...task, done: response.data.done } : task); return { ...person, tasks, status: response.data.status ?? person.status }; })); setSelected((current) => current?.id === personId ? { ...current, tasks: current.tasks.map((task) => task.id === taskId ? { ...task, done: response.data.done } : task), status: response.data.status ?? current.status } : current); } catch { toast('Unable to update checklist task.', 'error'); }
   };
-  const completeOnboarding = () => { if (!confirmComplete) return; setPeople((rows) => rows.map((person) => person.id === confirmComplete.id ? { ...person, status: 'Completed', tasks: person.tasks.map((task) => ({ ...task, done: true })) } : person)); setConfirmComplete(null); toast(`${confirmComplete.name}'s onboarding marked complete.`, 'success'); };
+  const completeOnboarding = async () => { if (!confirmComplete) return; try { await api.post(`/onboarding/${confirmComplete.id}/complete`); await loadPeople(); setConfirmComplete(null); toast(`${confirmComplete.name}'s onboarding marked complete.`, 'success'); } catch { toast('Unable to complete onboarding.', 'error'); } };
 
   return <div>
     <ModuleHeader eyebrow="People operations" title="Onboarding" description="Help new hires get productive from day one" action={<button onClick={() => setShowNew(true)} className="btn-cta gap-2"><Plus size={15} /> Start Onboarding</button>} />

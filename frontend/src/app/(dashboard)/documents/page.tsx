@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import api from '@/lib/api';
 import {
   FileText, AlertTriangle, CheckCircle2, HardDrive, Search, Upload, MoreHorizontal, Download, Clock, Shield, X, Eye, Trash2, Send, Edit3, Copy,
 } from 'lucide-react';
@@ -13,6 +14,7 @@ import { useEscapeKey } from '@/components/ui/useEscapeKey';
 type Doc = {
   id: string; name: string; employee: string; type: string; size: string; uploaded: string;
   expiry: string; status: 'valid' | 'expiring' | 'expired'; uploadBy: string;
+  employee_id?: string; size_bytes?: number; expiry_date?: string | null; download_url?: string | null;
   reminderSent?: boolean; renewalRequested?: boolean;};
 
 const initialDocs: Doc[] = [
@@ -268,7 +270,8 @@ function PolicyTemplatesModal({ onClose }: { onClose: () => void }) {
 }
 
 export default function DocumentsPage() {
-  const [docs, setDocs] = useState(initialDocs);
+  const [docs, setDocs] = useState<Doc[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('All Documents');
   const [showUpload, setShowUpload] = useState(false);
@@ -279,52 +282,44 @@ export default function DocumentsPage() {
   const [showExpiry, setShowExpiry] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const { toast } = useToast();
+  const loadDocuments = async () => {
+    setLoading(true);
+    try { const response = await api.get('/documents', { params: { search, type: activeCategory } }); setDocs(response.data.items ?? []); }
+    catch { toast('Unable to load documents.', 'error'); }
+    finally { setLoading(false); }
+  };
+  useEffect(() => { void loadDocuments(); }, [activeCategory]);
 
-  const submitUpload = (event: React.FormEvent<HTMLFormElement>) => {
+  const submitUpload = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     const file = data.get('file') as File | null;
-    const docType = (data.get('docType') as string) || 'Contract';
-    const docEmployee = (data.get('docEmployee') as string) || 'Rina Sari';
     if (!file || file.size === 0) { setUploadError('Choose a file to upload.'); return; }
     if (file.size > 10 * 1024 * 1024) { setUploadError('File must be 10 MB or smaller.'); return; }
-    const allowed = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'];
-    if (!allowed.includes(file.type)) { setUploadError('Only PDF, PNG, JPG, and WebP files are supported.'); return; }
+    if (!['application/pdf', 'image/png', 'image/jpeg', 'image/webp'].includes(file.type)) { setUploadError('Only PDF, PNG, JPG, and WebP files are supported.'); return; }
     setUploadError('');
-    setShowUpload(false);
-    const newDoc: Doc = {
-      id: String(Date.now()),
-      name: file.name.replace(/\.[^.]+$/, ''),
-      employee: docEmployee,
-      type: docType,
-      size: file.size > 1024 * 1024 ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` : `${Math.round(file.size / 1024)} KB`,
-      uploaded: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-      expiry: '—',
-      status: 'valid',
-      uploadBy: 'You',
-    };
-    setDocs((prev) => [newDoc, ...prev]);
-    toast('Document uploaded successfully.', 'success');
+    data.set('document_type', String(data.get('docType') || 'Contract'));
+    data.delete('docType');
+    try { await api.post('/documents', data, { headers: { 'Content-Type': 'multipart/form-data' } }); setShowUpload(false); await loadDocuments(); toast('Document uploaded successfully.', 'success'); }
+    catch (error: any) { setUploadError(error?.response?.data?.detail || 'Unable to upload document.'); }
   };
 
-  const handleDelete = (doc: Doc) => {
-    setDocs((prev) => prev.filter((d) => d.id !== doc.id));
-    setActionDoc(null);
-    toast(`${doc.name} (${doc.employee}) has been deleted.`, 'success');
+  const handleDelete = async (doc: Doc) => {
+    try { await api.delete(`/documents/${doc.id}`); setDocs((prev) => prev.filter((d) => d.id !== doc.id)); setActionDoc(null); toast(`${doc.name} (${doc.employee}) has been deleted.`, 'success'); }
+    catch { toast('Unable to delete document.', 'error'); }
   };
 
-  const handleRemind = (doc: Doc) => {
-    setDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, reminderSent: true } : d));
-    toast(`Reminder sent to ${doc.employee}.`, 'success');
+  const handleRemind = async (doc: Doc) => {
+    try { await api.post(`/documents/${doc.id}/remind`); setDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, reminderSent: true } : d)); toast(`Reminder sent to ${doc.employee}.`, 'success'); } catch { toast('Unable to send reminder.', 'error'); }
   };
 
-  const handleRequestRenewal = (doc: Doc) => {
-    setDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, renewalRequested: true } : d));
-    toast(`Renewal request sent to ${doc.employee}.`, 'success');
+  const handleRequestRenewal = async (doc: Doc) => {
+    try { await api.post(`/documents/${doc.id}/renew`); setDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, renewalRequested: true } : d)); toast(`Renewal request sent to ${doc.employee}.`, 'success'); } catch { toast('Unable to request renewal.', 'error'); }
   };
 
   const handleDownload = (doc: Doc) => {
     setActionDoc(null);
+    if (doc.download_url) { window.open(doc.download_url, '_blank', 'noopener,noreferrer'); toast(`Downloaded ${doc.name} — ${doc.employee}.`, 'success'); return; }
     downloadTextFile(`${doc.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${doc.employee.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.txt`, `${doc.name}\nEmployee: ${doc.employee}\nType: ${doc.type}\nUploaded: ${doc.uploaded}\nExpiry: ${doc.expiry}\nStatus: ${statusMeta[doc.status].label}\nSize: ${doc.size}`);
     toast(`Downloaded ${doc.name} — ${doc.employee}.`, 'success');
   };
@@ -375,7 +370,7 @@ export default function DocumentsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 ? <tr><td colSpan={7}><EmptyState title="No documents found" description="Try another search or category filter." /></td></tr> : filtered.map((doc) => {
+                {loading ? <tr><td colSpan={7}><div className="p-8 text-center text-sm text-muted">Loading documents…</div></td></tr> : filtered.length === 0 ? <tr><td colSpan={7}><EmptyState title="No documents found" description="Try another search or category filter." /></td></tr> : filtered.map((doc) => {
                   const st = statusMeta[doc.status];
                   const Icon = st.icon;
                   return (
