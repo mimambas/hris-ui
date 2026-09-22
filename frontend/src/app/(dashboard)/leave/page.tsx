@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import api from '@/lib/api';
 import {
   Search, CheckCircle2, XCircle, Clock, CalendarDays, Plus, X, Eye, Trash2,
   MessageSquare, ChevronDown, UserRound, AlertTriangle,
@@ -265,7 +266,7 @@ function RejectModal({ onClose, onReject }: { onClose: () => void; onReject: (re
   );
 }
 
-function NewRequestModal({ onClose }: { onClose: () => void }) {
+function NewRequestModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => Promise<void> }) {
   const { toast } = useToast();
   const [type, setType] = useState<string>('');
   const [from, setFrom] = useState('');
@@ -274,8 +275,13 @@ function NewRequestModal({ onClose }: { onClose: () => void }) {
   const [employee, setEmployee] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [employees, setEmployees] = useState<{ id: string; full_name: string }[]>([]);
 
-  const employees = ['Budi Hartono', 'Sari Dewi', 'Andi Pratama', 'Maya Anggraeni', 'Fajar Nugroho', 'Rina Sari', 'Rizky Prasetyo', 'Dewi Lestari'];
+  useEffect(() => {
+    api.get<{ items: { id: string; full_name: string }[] }>('/employees', { params: { per_page: 100 } })
+      .then((response) => setEmployees(response.data.items))
+      .catch(() => setEmployees([]));
+  }, []);
 
   const calcDays = () => {
     if (!from || !to) return 0;
@@ -295,15 +301,20 @@ function NewRequestModal({ onClose }: { onClose: () => void }) {
     return Object.keys(e).length === 0;
   };
 
-  const handleSubmit = (ev: React.FormEvent) => {
+  const handleSubmit = async (ev: React.FormEvent) => {
     ev.preventDefault();
     if (!validate()) return;
     setSubmitting(true);
-    setTimeout(() => {
-      setSubmitting(false);
-      toast(`Leave request submitted for ${employee}. ${calcDays()} day${calcDays() !== 1 ? 's' : ''} requested.`, 'success');
+    try {
+      await api.post('/leave', { employee_id: employee, leave_type: ({ 'Annual Leave': 'annual', 'Sick Leave': 'sick', 'Personal Leave': 'personal', 'Maternity Leave': 'maternity', 'Unpaid Leave': 'unpaid' } as Record<string, string>)[type], start_date: from, end_date: to, reason: reason.trim() });
+      await onSaved();
+      toast(`Leave request submitted. ${calcDays()} day${calcDays() !== 1 ? 's' : ''} requested.`, 'success');
       onClose();
-    }, 800);
+    } catch (error: any) {
+      toast(error.response?.data?.detail || 'Could not submit leave request.', 'error');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -319,7 +330,7 @@ function NewRequestModal({ onClose }: { onClose: () => void }) {
             <span className="text-sm font-semibold text-ink">Employee <span className="text-semantic-down">*</span></span>
             <select value={employee} onChange={(e) => setEmployee(e.target.value)} className="input-field mt-1.5">
               <option value="">Select employee…</option>
-              {employees.map((n) => <option key={n}>{n}</option>)}
+              {employees.map((employee) => <option key={employee.id} value={employee.id}>{employee.full_name}</option>)}
             </select>
             {errors.employee && <p role="alert" className="text-xs text-semantic-down mt-1">{errors.employee}</p>}
           </label>
@@ -368,7 +379,9 @@ function NewRequestModal({ onClose }: { onClose: () => void }) {
 }
 
 export default function LeavePage() {
-  const [requests, setRequests] = useState(initialRequests);
+  const [requests, setRequests] = useState<LeaveRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'cancelled'>('all');
   const [deptFilter, setDeptFilter] = useState('All');
@@ -381,6 +394,24 @@ export default function LeavePage() {
   const { toast } = useToast();
 
   const departments = ['All', ...Array.from(new Set(requests.map((r) => r.department)))];
+
+  const loadRequests = async () => {
+    setLoading(true);
+    setLoadError('');
+    try {
+      const response = await api.get<{ items: any[] }>('/leave', { params: { status: tab === 'all' ? undefined : tab } });
+      setRequests(response.data.items.map((item) => {
+        const label = { annual: 'Annual Leave', sick: 'Sick Leave', personal: 'Personal Leave', maternity: 'Maternity Leave', unpaid: 'Unpaid Leave' }[item.leave_type as string] ?? item.leave_type;
+        return { ...item, name: item.employee_name, initials: item.employee_name.split(/\s+/).map((part: string) => part[0]).slice(0, 2).join('').toUpperCase(), department: item.department, type: label, from: item.start_date, to: item.end_date, days: Number(item.total_days), balance: 0, submittedDate: item.created_at, approvalChain: [], timeline: [] };
+      }));
+    } catch (error: any) {
+      setLoadError(error.response?.data?.detail || 'Could not load leave requests.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { void loadRequests(); }, [tab]);
 
   const filtered = useMemo(() =>
     requests
@@ -425,6 +456,7 @@ export default function LeavePage() {
     const req = requests.find((r) => r.id === id);
     if (!req) return;
     setRequests((rows) => advanceChain(rows, id, 'approve'));
+    void api.post(`/leave/${id}/approve`).then(() => loadRequests()).catch(() => toast('Could not approve leave request.', 'error'));
     const pendingIdx = req.approvalChain.findIndex((s) => s.status === 'pending');
     const hasMoreSteps = pendingIdx !== -1 && pendingIdx < req.approvalChain.length - 1;
     toast(hasMoreSteps ? 'Approved. Forwarded to next approver.' : `${req.name}'s leave request fully approved.`, 'success');
@@ -434,6 +466,7 @@ export default function LeavePage() {
     const req = requests.find((r) => r.id === id);
     if (!req) return;
     setRequests((rows) => advanceChain(rows, id, 'reject', reason));
+    void api.post(`/leave/${id}/reject`, { reason }).then(() => loadRequests()).catch(() => toast('Could not reject leave request.', 'error'));
     toast(`${req.name}'s leave request rejected.`, 'success');
     setRejectTarget(null);
   };
@@ -441,16 +474,13 @@ export default function LeavePage() {
   const handleCancel = (id: string) => {
     const req = requests.find((r) => r.id === id);
     if (!req) return;
-    setRequests((rows) => rows.map((r) => r.id === id ? {
-      ...r, status: 'cancelled' as const,
-      timeline: [...r.timeline, { action: 'Cancelled', by: req.name, date: new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) }],
-    } : r));
+    void api.post(`/leave/${id}/cancel`).then(() => loadRequests()).catch(() => toast('Could not cancel leave request.', 'error'));
     toast(`Leave request cancelled.`, 'success');
     setCancelTarget(null);
   };
 
   const handleDelete = (id: string) => {
-    setRequests((rows) => rows.filter((r) => r.id !== id));
+    void api.delete(`/leave/${id}`).then(() => loadRequests()).catch(() => toast('Could not remove leave request.', 'error'));
     toast('Leave request removed.', 'success');
     setConfirmDelete(null);
     setSelectedReq(null);
@@ -504,6 +534,7 @@ export default function LeavePage() {
       </div>
 
       <div className="card p-0 overflow-hidden">
+        {loadError && <div className="m-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 flex items-center justify-between"><p className="text-sm text-semantic-down">{loadError}</p><button onClick={() => void loadRequests()} className="btn-secondary text-xs">Retry</button></div>}
         <div className="px-5 py-4 border-b border-hairline-soft space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-2 flex-wrap">
@@ -539,7 +570,7 @@ export default function LeavePage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? <tr><td colSpan={6}><EmptyState title="No leave requests found" description="Try another search, filter, or status." /></td></tr> : filtered.map((row) => {
+              {loading ? <tr><td colSpan={6} className="table-cell text-center text-muted">Loading leave requests...</td></tr> : filtered.length === 0 ? <tr><td colSpan={6}><EmptyState title="No leave requests found" description="Try another search, filter, or status." /></td></tr> : filtered.map((row) => {
                 const st = statusMeta[row.status];
                 const Icon = st.icon;
                 return (
@@ -585,7 +616,7 @@ export default function LeavePage() {
       </div>
 
       {selectedReq && <RequestDetailModal request={selectedReq} onClose={() => setSelectedReq(null)} onApprove={handleApprove} onReject={handleReject} />}
-      {showRequest && <NewRequestModal onClose={() => setShowRequest(false)} />}
+      {showRequest && <NewRequestModal onClose={() => setShowRequest(false)} onSaved={loadRequests} />}
       {rejectTarget && (
         <RejectModal onClose={() => setRejectTarget(null)} onReject={(reason) => handleReject(rejectTarget, reason)} />
       )}

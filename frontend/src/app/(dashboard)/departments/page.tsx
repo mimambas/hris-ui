@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import api from '@/lib/api';
 import {
   Building2, Plus, Users, ChevronRight, MoreHorizontal, Search, Layers3,
   X, Mail, MapPin, Edit3, Trash2, Eye, DollarSign, Calendar, Briefcase,
@@ -237,7 +238,7 @@ function DetailModal({ dept, onClose, onEdit }: { dept: Department; onClose: () 
   );
 }
 
-function DepartmentFormModal({ initial, onClose }: { initial: Department | null; onClose: () => void }) {
+function DepartmentFormModal({ initial, onClose, onSaved }: { initial: Department | null; onClose: () => void; onSaved: () => Promise<void> }) {
   const { toast } = useToast();
   const [name, setName] = useState(initial?.name ?? '');
   const [code, setCode] = useState(initial?.code ?? '');
@@ -261,15 +262,22 @@ function DepartmentFormModal({ initial, onClose }: { initial: Department | null;
     return Object.keys(e).length === 0;
   };
 
-  const handleSubmit = (ev: React.FormEvent) => {
+  const handleSubmit = async (ev: React.FormEvent) => {
     ev.preventDefault();
     if (!validate()) return;
     setSaving(true);
-    setTimeout(() => {
-      setSaving(false);
+    try {
+      const payload = { name: name.trim(), code: code.trim(), cost_center: location || null };
+      if (initial) await api.put(`/departments/${initial.id}`, payload);
+      else await api.post('/departments', payload);
+      await onSaved();
       toast(initial ? `${name} updated successfully.` : `${name} department created.`, 'success');
       onClose();
-    }, 800);
+    } catch (error: any) {
+      toast(error.response?.data?.detail || 'Could not save department.', 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -354,24 +362,56 @@ export default function DepartmentsPage() {
   const [formDept, setFormDept] = useState<Department | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [showDelete, setShowDelete] = useState<Department | null>(null);
-  const [departments, setDepartments] = useState(allDepartments);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const { toast } = useToast();
 
-  const filtered = useMemo(() =>
-    departments
-      .filter((d) => `${d.name} ${d.code} ${d.head}`.toLowerCase().includes(search.toLowerCase()))
-      .filter((d) => showSub || d.parent === '—'),
-    [search, showSub, departments],
-  );
+  const loadDepartments = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const response = await api.get<{ items: any[] }>('/departments', { params: { search: search || undefined } });
+      setDepartments(response.data.items.map((item, index) => ({
+        ...item,
+        headEmail: item.head_email,
+        employees: item.employee_count ?? 0,
+        parent: item.parent ?? '—',
+        head: item.head ?? 'Unassigned',
+        budget: 0,
+        location: item.cost_center ?? '—',
+        createdAt: item.created_at,
+        description: '',
+        openRoles: 0,
+        members: [],
+        subTeams: [],
+        color: ['bg-primary-surface text-primary', 'bg-cta-surface text-cta-hover', 'bg-amber-50 text-accent-yellow'][index % 3],
+        icon: Building2,
+      })));
+    } catch (requestError: any) {
+      setError(requestError.response?.data?.detail || 'Could not load departments.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { void loadDepartments(); }, [search]);
+
+  const filtered = departments.filter((d) => showSub || d.parent === '—');
 
   const totalEmployees = filtered.reduce((s, d) => s + d.employees, 0);
   const totalSubTeams = filtered.reduce((s, d) => s + d.subTeams.length, 0);
   const totalOpenRoles = filtered.reduce((s, d) => s + d.openRoles, 0);
 
-  const handleDelete = (dept: Department) => {
-    setDepartments((prev) => prev.filter((d) => d.id !== dept.id));
-    setShowDelete(null);
-    toast(`${dept.name} has been removed.`, 'success');
+  const handleDelete = async (dept: Department) => {
+    try {
+      await api.delete(`/departments/${dept.id}`);
+      await loadDepartments();
+      setShowDelete(null);
+      toast(`${dept.name} has been removed.`, 'success');
+    } catch (requestError: any) {
+      toast(requestError.response?.data?.detail || 'Could not delete department.', 'error');
+    }
   };
 
   return (
@@ -407,6 +447,8 @@ export default function DepartmentsPage() {
           <p className="text-xs text-muted">{filtered.length} departments shown</p>
         </div>
 
+        {error && <div className="m-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 flex items-center justify-between"><p className="text-sm text-semantic-down">{error}</p><button onClick={() => void loadDepartments()} className="btn-secondary text-xs">Retry</button></div>}
+
         <div className="overflow-x-auto">
           <table className="w-full min-w-[820px]">
             <thead>
@@ -421,7 +463,7 @@ export default function DepartmentsPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
+              {loading ? <tr><td colSpan={7} className="table-cell text-center text-muted">Loading departments...</td></tr> : filtered.length === 0 ? (
                 <tr><td colSpan={7}><EmptyState title="No departments found" description="Try another search or show sub-teams." /></td></tr>
               ) : filtered.map((dept) => (
                 <tr key={dept.id} className="table-row cursor-pointer" onClick={() => setSelected(dept)}>
@@ -478,7 +520,7 @@ export default function DepartmentsPage() {
       </div>
 
       {selected && <DetailModal dept={selected} onClose={() => setSelected(null)} onEdit={(d) => { setFormDept(d); setShowForm(true); }} />}
-      {showForm && <DepartmentFormModal initial={formDept} onClose={() => { setShowForm(false); setFormDept(null); }} />}
+      {showForm && <DepartmentFormModal initial={formDept} onClose={() => { setShowForm(false); setFormDept(null); }} onSaved={loadDepartments} />}
       {showDelete && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" role="alertdialog" aria-modal="true">
           <div className="absolute inset-0 bg-ink/40" onClick={() => setShowDelete(null)} />
