@@ -1,0 +1,530 @@
+'use client';
+
+import { useMemo, useState } from 'react';
+import {
+  Search, CheckCircle2, XCircle, Clock, CalendarDays, Plus, X, Eye, Trash2,
+  MessageSquare, ChevronDown, UserRound, AlertTriangle,
+} from 'lucide-react';
+import ModuleHeader from '@/components/ui/ModuleHeader';
+import StatCard from '@/components/ui/StatCard';
+import EmptyState from '@/components/ui/EmptyState';
+import { useToast } from '@/components/ui/Toast';
+
+type LeaveRequest = {
+  id: string;
+  name: string;
+  initials: string;
+  department: string;
+  type: 'Annual Leave' | 'Sick Leave' | 'Personal Leave' | 'Maternity Leave' | 'Unpaid Leave';
+  from: string;
+  to: string;
+  days: number;
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  reason: string;
+  balance: number;
+  submittedDate: string;
+  reviewedBy?: string;
+  reviewDate?: string;
+  rejectReason?: string;
+  timeline: { action: string; by: string; date: string; note?: string }[];
+};
+
+const initialRequests: LeaveRequest[] = [
+  {
+    id: '1', name: 'Budi Hartono', initials: 'BH', department: 'Engineering', type: 'Annual Leave',
+    from: '22 Sep', to: '24 Sep', days: 3, status: 'pending', reason: 'Family vacation to Bali', balance: 9,
+    submittedDate: '18 Sep 2026', timeline: [{ action: 'Request submitted', by: 'Budi Hartono', date: '18 Sep, 14:30' }],
+  },
+  {
+    id: '2', name: 'Sari Dewi', initials: 'SD', department: 'Marketing', type: 'Sick Leave',
+    from: '20 Sep', to: '20 Sep', days: 1, status: 'approved', reason: 'Medical appointment — dentist checkup', balance: 14,
+    submittedDate: '19 Sep 2026', reviewedBy: 'Rina Sari', reviewDate: '19 Sep 2026',
+    timeline: [
+      { action: 'Request submitted', by: 'Sari Dewi', date: '19 Sep, 08:15' },
+      { action: 'Approved', by: 'Rina Sari', date: '19 Sep, 09:30', note: 'Approved. Get well soon!' },
+    ],
+  },
+  {
+    id: '3', name: 'Andi Pratama', initials: 'AP', department: 'Finance', type: 'Annual Leave',
+    from: '27 Sep', to: '30 Sep', days: 4, status: 'pending', reason: 'Wedding ceremony', balance: 8,
+    submittedDate: '15 Sep 2026', timeline: [{ action: 'Request submitted', by: 'Andi Pratama', date: '15 Sep, 10:00' }],
+  },
+  {
+    id: '4', name: 'Maya Anggraeni', initials: 'MA', department: 'Design', type: 'Personal Leave',
+    from: '18 Sep', to: '19 Sep', days: 2, status: 'approved', reason: 'Moving house', balance: 13,
+    submittedDate: '14 Sep 2026', reviewedBy: 'Budi Hartono', reviewDate: '14 Sep 2026',
+    timeline: [
+      { action: 'Request submitted', by: 'Maya Anggraeni', date: '14 Sep, 11:00' },
+      { action: 'Approved', by: 'Budi Hartono', date: '14 Sep, 15:45' },
+    ],
+  },
+  {
+    id: '5', name: 'Fajar Nugroho', initials: 'FN', department: 'Engineering', type: 'Annual Leave',
+    from: '15 Sep', to: '17 Sep', days: 3, status: 'approved', reason: 'Travel to Yogyakarta', balance: 11,
+    submittedDate: '10 Sep 2026', reviewedBy: 'Budi Hartono', reviewDate: '10 Sep 2026',
+    timeline: [
+      { action: 'Request submitted', by: 'Fajar Nugroho', date: '10 Sep, 09:00' },
+      { action: 'Approved', by: 'Budi Hartono', date: '10 Sep, 14:20' },
+    ],
+  },
+  {
+    id: '6', name: 'Rina Sari', initials: 'RS', department: 'HR', type: 'Maternity Leave',
+    from: '01 Oct', to: '31 Dec', days: 66, status: 'pending', reason: 'Maternity leave — expected due date October 5', balance: 12,
+    submittedDate: '12 Sep 2026', timeline: [{ action: 'Request submitted', by: 'Rina Sari', date: '12 Sep, 16:00' }],
+  },
+  {
+    id: '7', name: 'Rizky Prasetyo', initials: 'RP', department: 'Engineering', type: 'Annual Leave',
+    from: '01 Sep', to: '03 Sep', days: 3, status: 'rejected', reason: 'Personal trip', balance: 11,
+    submittedDate: '25 Aug 2026', reviewedBy: 'Budi Hartono', reviewDate: '26 Aug 2026',
+    rejectReason: 'Too many engineers already on leave that week. Please reschedule.',
+    timeline: [
+      { action: 'Request submitted', by: 'Rizky Prasetyo', date: '25 Aug, 08:30' },
+      { action: 'Rejected', by: 'Budi Hartono', date: '26 Aug, 10:15', note: 'Too many engineers already on leave that week. Please reschedule.' },
+    ],
+  },
+  {
+    id: '8', name: 'Dewi Lestari', initials: 'DL', department: 'HR', type: 'Personal Leave',
+    from: '05 Oct', to: '05 Oct', days: 1, status: 'pending', reason: 'Family matter', balance: 15,
+    submittedDate: '20 Sep 2026', timeline: [{ action: 'Request submitted', by: 'Dewi Lestari', date: '20 Sep, 13:00' }],
+  },
+];
+
+const leaveTypes = ['Annual Leave', 'Sick Leave', 'Personal Leave', 'Maternity Leave', 'Unpaid Leave'] as const;
+
+const statusMeta: Record<string, { label: string; color: string; icon: typeof CheckCircle2 }> = {
+  pending: { label: 'Pending', color: 'bg-amber-50 text-accent-yellow', icon: Clock },
+  approved: { label: 'Approved', color: 'bg-cta-surface text-cta-hover', icon: CheckCircle2 },
+  rejected: { label: 'Rejected', color: 'bg-red-50 text-semantic-down', icon: XCircle },
+  cancelled: { label: 'Cancelled', color: 'bg-surface-strong text-muted', icon: XCircle },
+};
+
+const balances = [
+  { type: 'Annual Leave', used: 12, total: 12 },
+  { type: 'Sick Leave', used: 3, total: 12 },
+  { type: 'Personal Leave', used: 2, total: 3 },
+  { type: 'Maternity Leave', used: 0, total: 90 },
+];
+
+function RequestDetailModal({ request, onClose }: { request: LeaveRequest; onClose: () => void }) {
+  const st = statusMeta[request.status];
+  const Icon = st.icon;
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+      <div className="absolute inset-0 bg-ink/40" onClick={onClose} />
+      <div className="relative w-full max-w-lg rounded-2xl bg-canvas border border-hairline shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-canvas border-b border-hairline-soft px-6 py-4 flex items-center justify-between z-10">
+          <h2 className="text-base font-bold text-ink">Leave Request Details</h2>
+          <button onClick={onClose} aria-label="Close" className="btn-secondary min-h-10 min-w-10 px-3"><X size={15} /></button>
+        </div>
+        <div className="px-6 py-5">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-12 h-12 rounded-full bg-primary-surface flex items-center justify-center"><span className="text-sm font-bold text-primary">{request.initials}</span></div>
+            <div>
+              <p className="text-sm font-bold text-ink">{request.name}</p>
+              <p className="text-xs text-muted">{request.department}</p>
+            </div>
+            <span className={`badge gap-1.5 ml-auto ${st.color}`}><Icon size={12} /> {st.label}</span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 mb-5">
+            <div className="rounded-xl bg-surface-soft p-3"><p className="text-[10px] uppercase tracking-wider text-muted font-semibold">Type</p><p className="text-sm font-bold text-ink mt-1">{request.type}</p></div>
+            <div className="rounded-xl bg-surface-soft p-3"><p className="text-[10px] uppercase tracking-wider text-muted font-semibold">Duration</p><p className="text-sm font-bold text-ink mt-1">{request.from} — {request.to}</p><p className="text-[11px] text-muted">{request.days} day{request.days > 1 ? 's' : ''}</p></div>
+            <div className="rounded-xl bg-surface-soft p-3"><p className="text-[10px] uppercase tracking-wider text-muted font-semibold">Reason</p><p className="text-sm text-ink mt-1">{request.reason}</p></div>
+            <div className="rounded-xl bg-surface-soft p-3"><p className="text-[10px] uppercase tracking-wider text-muted font-semibold">Remaining balance</p><p className="text-sm font-bold text-ink mt-1">{request.balance} days</p></div>
+          </div>
+
+          {request.rejectReason && (
+            <div className="rounded-xl bg-red-50 border border-red-200 p-3 mb-5">
+              <p className="text-[10px] uppercase tracking-wider text-semantic-down font-semibold mb-1">Rejection reason</p>
+              <p className="text-xs text-body">{request.rejectReason}</p>
+            </div>
+          )}
+
+          <div>
+            <h3 className="text-xs font-bold text-ink uppercase tracking-wider mb-3">Timeline</h3>
+            <div className="space-y-0">
+              {request.timeline.map((t, i) => (
+                <div key={i} className="flex gap-3 pb-4 last:pb-0">
+                  <div className="flex flex-col items-center">
+                    <div className={`w-3 h-3 rounded-full shrink-0 mt-1 ${i === request.timeline.length - 1 ? 'bg-primary' : 'bg-hairline'}`} />
+                    {i < request.timeline.length - 1 && <div className="w-px flex-1 bg-hairline mt-1" />}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-ink">{t.action}</p>
+                    <p className="text-xs text-muted mt-0.5">by {t.by} · {t.date}</p>
+                    {t.note && <p className="text-xs text-body mt-1 bg-surface-soft rounded-lg p-2">{t.note}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="px-6 py-4 border-t border-hairline-soft">
+          <button onClick={onClose} className="btn-secondary w-full justify-center text-sm">Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RejectModal({ onClose, onReject }: { onClose: () => void; onReject: (reason: string) => void }) {
+  const [reason, setReason] = useState('');
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+      <div className="absolute inset-0 bg-ink/40" onClick={onClose} />
+      <div className="relative w-full max-w-md rounded-2xl bg-canvas border border-hairline shadow-2xl p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center"><XCircle size={16} className="text-semantic-down" /></div>
+          <h3 className="text-base font-bold text-ink">Reject Leave Request</h3>
+        </div>
+        <p className="text-sm text-body mb-4">Provide a reason for rejection. The employee will be notified.</p>
+        <label className="block">
+          <span className="text-sm font-semibold text-ink">Rejection reason <span className="text-semantic-down">*</span></span>
+          <textarea value={reason} onChange={(e) => setReason(e.target.value)} className="input-field mt-1.5 min-h-[80px] resize-y" placeholder="e.g. Too many team members already on leave during this period..." />
+          {reason.length === 0 && <p className="text-[11px] text-muted mt-1">Reason is required</p>}
+        </label>
+        <div className="flex gap-3 justify-end mt-5 pt-4 border-t border-hairline-soft">
+          <button onClick={onClose} className="btn-secondary text-sm">Cancel</button>
+          <button onClick={() => { if (reason.trim()) onReject(reason.trim()); }} disabled={!reason.trim()} className="min-h-10 px-4 rounded-pill bg-semantic-down text-white text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-40">Reject request</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NewRequestModal({ onClose }: { onClose: () => void }) {
+  const { toast } = useToast();
+  const [type, setType] = useState<string>('');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const [reason, setReason] = useState('');
+  const [employee, setEmployee] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
+
+  const employees = ['Budi Hartono', 'Sari Dewi', 'Andi Pratama', 'Maya Anggraeni', 'Fajar Nugroho', 'Rina Sari', 'Rizky Prasetyo', 'Dewi Lestari'];
+
+  const calcDays = () => {
+    if (!from || !to) return 0;
+    const diff = Math.ceil((new Date(to).getTime() - new Date(from).getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    return diff > 0 ? diff : 0;
+  };
+
+  const validate = () => {
+    const e: Record<string, string> = {};
+    if (!employee) e.employee = 'Select an employee.';
+    if (!type) e.type = 'Select a leave type.';
+    if (!from) e.from = 'Start date is required.';
+    if (!to) e.to = 'End date is required.';
+    if (from && to && new Date(to) < new Date(from)) e.to = 'End date must be after start date.';
+    if (!reason.trim()) e.reason = 'Reason is required.';
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const handleSubmit = (ev: React.FormEvent) => {
+    ev.preventDefault();
+    if (!validate()) return;
+    setSubmitting(true);
+    setTimeout(() => {
+      setSubmitting(false);
+      toast(`Leave request submitted for ${employee}. ${calcDays()} day${calcDays() !== 1 ? 's' : ''} requested.`, 'success');
+      onClose();
+    }, 800);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+      <div className="absolute inset-0 bg-ink/40" onClick={onClose} />
+      <form onSubmit={handleSubmit} className="relative w-full max-w-lg rounded-2xl bg-canvas border border-hairline shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-canvas border-b border-hairline-soft px-6 py-4 flex items-center justify-between z-10">
+          <div><h2 className="text-base font-bold text-ink">New Leave Request</h2><p className="text-xs text-muted mt-0.5">Submit a request for manager approval</p></div>
+          <button type="button" onClick={onClose} aria-label="Close" className="btn-secondary min-h-10 min-w-10 px-3"><X size={15} /></button>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          <label className="block">
+            <span className="text-sm font-semibold text-ink">Employee <span className="text-semantic-down">*</span></span>
+            <select value={employee} onChange={(e) => setEmployee(e.target.value)} className="input-field mt-1.5">
+              <option value="">Select employee…</option>
+              {employees.map((n) => <option key={n}>{n}</option>)}
+            </select>
+            {errors.employee && <p role="alert" className="text-xs text-semantic-down mt-1">{errors.employee}</p>}
+          </label>
+          <label className="block">
+            <span className="text-sm font-semibold text-ink">Leave type <span className="text-semantic-down">*</span></span>
+            <select value={type} onChange={(e) => setType(e.target.value)} className="input-field mt-1.5">
+              <option value="">Select type…</option>
+              {leaveTypes.map((t) => <option key={t}>{t}</option>)}
+            </select>
+            {errors.type && <p role="alert" className="text-xs text-semantic-down mt-1">{errors.type}</p>}
+          </label>
+          <div className="grid grid-cols-2 gap-4">
+            <label className="block">
+              <span className="text-sm font-semibold text-ink">From <span className="text-semantic-down">*</span></span>
+              <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="input-field mt-1.5" />
+              {errors.from && <p role="alert" className="text-xs text-semantic-down mt-1">{errors.from}</p>}
+            </label>
+            <label className="block">
+              <span className="text-sm font-semibold text-ink">To <span className="text-semantic-down">*</span></span>
+              <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="input-field mt-1.5" />
+              {errors.to && <p role="alert" className="text-xs text-semantic-down mt-1">{errors.to}</p>}
+            </label>
+          </div>
+          {from && to && calcDays() > 0 && (
+            <div className="rounded-xl bg-primary-surface p-3 flex items-center justify-between">
+              <span className="text-xs text-primary font-semibold">Total days</span>
+              <span className="text-sm font-bold text-primary">{calcDays()} day{calcDays() !== 1 ? 's' : ''}</span>
+            </div>
+          )}
+          <label className="block">
+            <span className="text-sm font-semibold text-ink">Reason <span className="text-semantic-down">*</span></span>
+            <textarea value={reason} onChange={(e) => setReason(e.target.value)} className="input-field mt-1.5 min-h-[80px] resize-y" placeholder="Why are you requesting leave?" />
+            {errors.reason && <p role="alert" className="text-xs text-semantic-down mt-1">{errors.reason}</p>}
+          </label>
+        </div>
+        <div className="px-6 py-4 border-t border-hairline-soft flex gap-3">
+          <button type="button" onClick={onClose} className="btn-secondary flex-1 justify-center text-sm">Cancel</button>
+          <button type="submit" disabled={submitting} className="btn-cta flex-1 justify-center gap-2 text-sm disabled:opacity-50">
+            {submitting && <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+            Submit Request
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+export default function LeavePage() {
+  const [requests, setRequests] = useState(initialRequests);
+  const [search, setSearch] = useState('');
+  const [tab, setTab] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'cancelled'>('all');
+  const [deptFilter, setDeptFilter] = useState('All');
+  const [showRequest, setShowRequest] = useState(false);
+  const [selectedReq, setSelectedReq] = useState<LeaveRequest | null>(null);
+  const [reviewTarget, setReviewTarget] = useState<{ id: string; action: 'approve' | 'reject' } | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<string | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  const departments = ['All', ...Array.from(new Set(requests.map((r) => r.department)))];
+
+  const filtered = useMemo(() =>
+    requests
+      .filter((r) => `${r.name} ${r.type} ${r.reason} ${r.department}`.toLowerCase().includes(search.toLowerCase()))
+      .filter((r) => tab === 'all' || r.status === tab)
+      .filter((r) => deptFilter === 'All' || r.department === deptFilter),
+    [requests, search, tab, deptFilter],
+  );
+
+  const pendingCount = requests.filter((r) => r.status === 'pending').length;
+  const approvedCount = requests.filter((r) => r.status === 'approved').length;
+
+  const handleApprove = (id: string) => {
+    const req = requests.find((r) => r.id === id);
+    if (!req) return;
+    setRequests((rows) => rows.map((r) => r.id === id ? {
+      ...r, status: 'approved' as const, reviewedBy: 'You', reviewDate: new Date().toLocaleDateString('en-GB'),
+      timeline: [...r.timeline, { action: 'Approved', by: 'You', date: new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) }],
+    } : r));
+    toast(`${req.name}'s leave request approved.`, 'success');
+    setReviewTarget(null);
+  };
+
+  const handleReject = (id: string, reason: string) => {
+    const req = requests.find((r) => r.id === id);
+    if (!req) return;
+    setRequests((rows) => rows.map((r) => r.id === id ? {
+      ...r, status: 'rejected' as const, reviewedBy: 'You', rejectReason: reason, reviewDate: new Date().toLocaleDateString('en-GB'),
+      timeline: [...r.timeline, { action: 'Rejected', by: 'You', date: new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }), note: reason }],
+    } : r));
+    toast(`${req.name}'s leave request rejected.`, 'success');
+    setRejectTarget(null);
+  };
+
+  const handleCancel = (id: string) => {
+    const req = requests.find((r) => r.id === id);
+    if (!req) return;
+    setRequests((rows) => rows.map((r) => r.id === id ? {
+      ...r, status: 'cancelled' as const,
+      timeline: [...r.timeline, { action: 'Cancelled', by: req.name, date: new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) }],
+    } : r));
+    toast(`Leave request cancelled.`, 'success');
+    setCancelTarget(null);
+  };
+
+  const handleDelete = (id: string) => {
+    setRequests((rows) => rows.filter((r) => r.id !== id));
+    toast('Leave request removed.', 'success');
+    setConfirmDelete(null);
+    setSelectedReq(null);
+  };
+
+  return (
+    <div>
+      <ModuleHeader eyebrow="Time off" title="Leave Management" description="Manage leave requests, balances, and approvals" action={<button onClick={() => setShowRequest(true)} className="btn-cta gap-2"><Plus size={15} /> New Request</button>} />
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
+        <StatCard icon={Clock} label="Pending requests" value={String(pendingCount)} tone="amber" detail="Awaiting approval" />
+        <StatCard icon={CheckCircle2} label="Approved this month" value={String(approvedCount)} tone="green" detail="This month" />
+        <StatCard icon={XCircle} label="Rejected" value={String(requests.filter((r) => r.status === 'rejected').length)} tone="red" detail="This month" />
+        <StatCard icon={CalendarDays} label="On leave today" value="18" tone="primary" detail="3.7% of workforce" />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
+        <div className="lg:col-span-2 card">
+          <h2 className="text-sm font-bold text-ink mb-4">Leave Balances</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {balances.map((b) => (
+              <div key={b.type} className="rounded-xl border border-hairline p-4 bg-surface-soft">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted mb-2">{b.type}</p>
+                <p className="text-xl font-mono font-bold text-ink">{b.used}<span className="text-sm font-normal text-muted">/{b.total}</span></p>
+                {b.total > 0 && (
+                  <div className="mt-2.5 h-1.5 rounded-full bg-hairline overflow-hidden">
+                    <div className={`h-full rounded-full ${(b.used / b.total) > 0.8 ? 'bg-red-400' : 'bg-primary'}`} style={{ width: `${(b.used / b.total) * 100}%` }} />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="card">
+          <h2 className="text-sm font-bold text-ink mb-4">Quick Summary</h2>
+          <div className="space-y-3">
+            {[
+              { label: 'Most used type', value: 'Annual Leave', color: 'text-primary' },
+              { label: 'Avg. request length', value: '2.5 days', color: 'text-ink' },
+              { label: 'Longest current leave', value: 'Rina Sari — 66 days', color: 'text-ink' },
+              { label: 'Upcoming returns', value: '3 employees this week', color: 'text-cta' },
+            ].map((item) => (
+              <div key={item.label} className="flex justify-between gap-4 border-b border-hairline-soft pb-2 last:border-0 last:pb-0">
+                <span className="text-xs text-muted">{item.label}</span>
+                <span className={`text-xs font-semibold text-right ${item.color}`}>{item.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="card p-0 overflow-hidden">
+        <div className="px-5 py-4 border-b border-hairline-soft space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              {(['all', 'pending', 'approved', 'rejected', 'cancelled'] as const).map((t) => (
+                <button key={t} onClick={() => setTab(t)} className={`min-h-10 px-4 rounded-pill text-xs font-semibold transition-colors ${tab === t ? 'bg-primary text-white' : 'bg-surface-strong text-muted hover:text-ink'}`}>
+                  {t.charAt(0).toUpperCase() + t.slice(1)}
+                  {t === 'pending' && pendingCount > 0 && <span className="ml-1.5 bg-primary-light text-white text-[10px] px-1.5 py-0.5 rounded-full">{pendingCount}</span>}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} className="min-h-10 px-3 rounded-pill bg-surface-strong text-xs font-semibold text-muted appearance-none pr-8 cursor-pointer">
+                {departments.map((d) => <option key={d}>{d}</option>)}
+              </select>
+              <div className="relative max-w-xs">
+                <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-soft" />
+                <input type="search" aria-label="Search leave requests" placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full min-h-10 rounded-pill bg-surface-strong pl-9 pr-3 py-2 text-sm text-ink placeholder:text-muted-soft focus:outline-none focus:ring-2 focus:ring-primary/20" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[900px]">
+            <thead>
+              <tr className="border-b border-hairline">
+                <th className="table-header">Employee</th>
+                <th className="table-header">Type</th>
+                <th className="table-header">Duration</th>
+                <th className="table-header">Reason</th>
+                <th className="table-header">Status</th>
+                <th className="table-header text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 ? <tr><td colSpan={6}><EmptyState title="No leave requests found" description="Try another search, filter, or status." /></td></tr> : filtered.map((row) => {
+                const st = statusMeta[row.status];
+                const Icon = st.icon;
+                return (
+                  <tr key={row.id} className="table-row">
+                    <td className="table-cell">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-primary-surface flex items-center justify-center shrink-0"><span className="text-[11px] font-bold text-primary">{row.initials}</span></div>
+                        <div>
+                          <button onClick={() => setSelectedReq(row)} className="font-semibold text-ink hover:text-primary transition-colors text-left">{row.name}</button>
+                          <p className="text-[11px] text-muted">{row.department}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="table-cell"><span className="badge bg-surface-strong text-muted">{row.type}</span></td>
+                    <td className="table-cell"><span className="text-ink">{row.from}</span> <span className="text-muted">—</span> <span className="text-ink">{row.to}</span><span className="text-muted ml-1 text-xs">({row.days}d)</span></td>
+                    <td className="table-cell text-muted max-w-[180px] truncate">{row.reason}</td>
+                    <td className="table-cell"><span className={`badge gap-1.5 capitalize ${st.color}`}><Icon size={12} /> {st.label}</span></td>
+                    <td className="table-cell text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        {row.status === 'pending' && (
+                          <>
+                            <button onClick={() => handleApprove(row.id)} className="min-h-9 px-2.5 rounded-lg bg-cta-surface text-cta-hover text-[11px] font-semibold hover:bg-emerald-100 transition-colors" title="Approve">Approve</button>
+                            <button onClick={() => setRejectTarget(row.id)} className="min-h-9 px-2.5 rounded-lg bg-red-50 text-semantic-down text-[11px] font-semibold hover:bg-red-100 transition-colors" title="Reject">Reject</button>
+                          </>
+                        )}
+                        {row.status === 'approved' && (
+                          <button onClick={() => setCancelTarget(row.id)} className="min-h-9 px-2.5 rounded-lg bg-surface-strong text-muted text-[11px] font-semibold hover:bg-hairline transition-colors" title="Cancel">Cancel</button>
+                        )}
+                        <button onClick={() => setSelectedReq(row)} className="min-h-9 min-w-9 rounded-md hover:bg-primary-surface flex items-center justify-center" title="View details"><Eye size={14} className="text-muted" /></button>
+                        <button onClick={() => setConfirmDelete(row.id)} className="min-h-9 min-w-9 rounded-md hover:bg-red-50 flex items-center justify-center" title="Delete"><Trash2 size={14} className="text-muted-soft hover:text-semantic-down" /></button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="px-5 py-4 border-t border-hairline-soft">
+          <p className="text-xs text-muted">Showing {filtered.length} of {requests.length} requests</p>
+        </div>
+      </div>
+
+      {selectedReq && <RequestDetailModal request={selectedReq} onClose={() => setSelectedReq(null)} />}
+      {showRequest && <NewRequestModal onClose={() => setShowRequest(false)} />}
+      {rejectTarget && (
+        <RejectModal onClose={() => setRejectTarget(null)} onReject={(reason) => handleReject(rejectTarget, reason)} />
+      )}
+      {cancelTarget && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" role="alertdialog" aria-modal="true">
+          <div className="absolute inset-0 bg-ink/40" onClick={() => setCancelTarget(null)} />
+          <div className="relative w-full max-w-sm rounded-2xl bg-canvas border border-hairline shadow-2xl p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center"><AlertTriangle size={16} className="text-accent-yellow" /></div>
+              <h3 className="text-base font-bold text-ink">Cancel leave request?</h3>
+            </div>
+            <p className="text-sm text-body mb-5">This will cancel your pending leave request. This action cannot be undone.</p>
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => setCancelTarget(null)} className="btn-secondary text-sm">Keep request</button>
+              <button onClick={() => handleCancel(cancelTarget)} className="min-h-10 px-4 rounded-pill bg-accent-yellow text-white text-sm font-semibold hover:bg-amber-600 transition-colors">Cancel leave</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" role="alertdialog" aria-modal="true">
+          <div className="absolute inset-0 bg-ink/40" onClick={() => setConfirmDelete(null)} />
+          <div className="relative w-full max-w-sm rounded-2xl bg-canvas border border-hairline shadow-2xl p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center"><Trash2 size={16} className="text-semantic-down" /></div>
+              <h3 className="text-base font-bold text-ink">Delete leave request</h3>
+            </div>
+            <p className="text-sm text-body mb-5">This will permanently remove this leave request. This action cannot be undone.</p>
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => setConfirmDelete(null)} className="btn-secondary text-sm">Cancel</button>
+              <button onClick={() => handleDelete(confirmDelete)} className="min-h-10 px-4 rounded-pill bg-semantic-down text-white text-sm font-semibold hover:bg-red-700 transition-colors">Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
