@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import api from '@/lib/api';
 import {
   Briefcase, Users, UserPlus, Clock, Plus, MoreHorizontal, Search, X,
   CalendarDays, Mail, Phone, MapPin, Star, MessageSquare, ChevronDown,
@@ -51,7 +52,8 @@ const stageDot: Record<Stage, string> = { Applied: 'bg-muted', Screening: 'bg-pr
 
 export default function RecruitmentPage() {
   const [view, setView] = useState<'pipeline' | 'candidates'>('pipeline');
-  const [candidates, setCandidates] = useState(initialCandidates);
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [showVacancy, setShowVacancy] = useState(false);
   const [search, setSearch] = useState('');
@@ -60,6 +62,8 @@ export default function RecruitmentPage() {
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [confirmReject, setConfirmReject] = useState<Candidate | null>(null);
   const { toast } = useToast();
+  const loadCandidates = async () => { setLoading(true); try { const response = await api.get('/recruitment'); setCandidates(response.data.items ?? []); } catch { toast('Unable to load candidates.', 'error'); } finally { setLoading(false); } };
+  useEffect(() => { void loadCandidates(); }, []);
 
   const roles = ['All roles', ...Array.from(new Set(candidates.map((candidate) => candidate.role)))];
   const filtered = useMemo(() => candidates.filter((candidate) => {
@@ -69,10 +73,8 @@ export default function RecruitmentPage() {
     return matchesSearch && matchesRole && matchesStage;
   }), [candidates, roleFilter, search, stageFilter]);
 
-  const updateStage = (id: string, stage: Stage) => {
-    setCandidates((current) => current.map((candidate) => candidate.id === id ? { ...candidate, stage } : candidate));
-    setSelectedCandidate((current) => current?.id === id ? { ...current, stage } : current);
-    toast(`Candidate moved to ${stage}.`, 'success');
+  const updateStage = async (id: string, stage: Stage) => {
+    try { await api.patch(`/recruitment/${id}`, { stage }); setCandidates((current) => current.map((candidate) => candidate.id === id ? { ...candidate, stage } : candidate)); setSelectedCandidate((current) => current?.id === id ? { ...current, stage } : current); toast(`Candidate moved to ${stage}.`, 'success'); } catch { toast('Unable to update candidate stage.', 'error'); }
   };
 
   const handleDrop = (stage: Stage) => {
@@ -81,15 +83,13 @@ export default function RecruitmentPage() {
     setDraggedId(null);
   };
 
-  const addNote = (id: string, note: string) => {
+  const addNote = async (id: string, note: string) => {
     const trimmed = note.trim();
     if (!trimmed) return;
-    setCandidates((current) => current.map((candidate) => candidate.id === id ? { ...candidate, notes: candidate.notes ? `${candidate.notes}\n${trimmed}` : trimmed } : candidate));
-    setSelectedCandidate((current) => current?.id === id ? { ...current, notes: current.notes ? `${current.notes}\n${trimmed}` : trimmed } : current);
-    toast('Note added to candidate.', 'success');
+    try { const response = await api.post(`/recruitment/${id}/notes`, { note: trimmed }); setCandidates((current) => current.map((candidate) => candidate.id === id ? { ...candidate, notes: response.data.notes } : candidate)); setSelectedCandidate((current) => current?.id === id ? { ...current, notes: response.data.notes } : current); toast('Note added to candidate.', 'success'); } catch { toast('Unable to add note.', 'error'); }
   };
 
-  const scheduleInterview = (event: React.FormEvent<HTMLFormElement>) => {
+  const scheduleInterview = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selectedCandidate) return;
     const form = new FormData(event.currentTarget);
@@ -97,20 +97,16 @@ export default function RecruitmentPage() {
     const time = String(form.get('time') || '');
     const interviewer = String(form.get('interviewer') || '').trim();
     if (!date || !time || !interviewer) { toast('Complete the interview date, time, and interviewer.', 'error'); return; }
-    const interview = { date, time, interviewer };
-    setCandidates((current) => current.map((candidate) => candidate.id === selectedCandidate.id ? { ...candidate, interview, stage: 'Interview' } : candidate));
-    setSelectedCandidate({ ...selectedCandidate, interview, stage: 'Interview' });
-    toast('Interview scheduled successfully.', 'success');
+    try { await api.post(`/recruitment/${selectedCandidate.id}/interview`, { date, time, interviewer }); await loadCandidates(); const interview = { date, time, interviewer }; setSelectedCandidate({ ...selectedCandidate, interview, stage: 'Interview' }); toast('Interview scheduled successfully.', 'success'); } catch { toast('Unable to schedule interview.', 'error'); }
   };
 
-  const createVacancy = (event: React.FormEvent<HTMLFormElement>) => {
+  const createVacancy = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const title = String(form.get('title') || '').trim();
     const department = String(form.get('department') || '').trim();
     if (!title || !department) { toast('Job title and department are required.', 'error'); return; }
-    setShowVacancy(false);
-    toast(`${title} vacancy created as draft.`, 'success');
+    try { await api.post('/recruitment/vacancies', { title, department, type: form.get('type'), openings: form.get('openings'), description: form.get('description') }); setShowVacancy(false); toast(`${title} vacancy created as draft.`, 'success'); } catch { toast('Unable to create vacancy.', 'error'); }
   };
 
   return (
