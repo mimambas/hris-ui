@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import api from '@/lib/api';
 import Link from 'next/link';
 import {
   Plus, Search, Download, Upload, MoreHorizontal, ChevronLeft, ChevronRight,
@@ -29,6 +30,47 @@ type Employee = {
   contractExpiry: string;
   leaveBalance: number;
 };
+
+type EmployeeApiRecord = {
+  id: string;
+  employee_id: string;
+  full_name: string;
+  email?: string | null;
+  phone?: string | null;
+  join_date: string;
+  employment_status: string;
+  department?: string | null;
+  position?: string | null;
+  status: string;
+  branch?: string | null;
+  base_salary?: number | null;
+  contract_end?: string | null;
+};
+
+type EmployeeListResponse = { items: EmployeeApiRecord[]; total: number; page: number; per_page: number; total_pages: number };
+
+function mapEmployee(record: EmployeeApiRecord, index: number): Employee {
+  const name = record.full_name || 'Unnamed employee';
+  const status = ['active', 'inactive', 'probation'].includes(record.status) ? record.status as Employee['status'] : 'active';
+  return {
+    id: record.id,
+    employeeId: record.employee_id,
+    name,
+    initials: initialsFromName(name),
+    department: record.department || 'Unassigned',
+    position: record.position || 'Unassigned',
+    status,
+    joinDate: record.join_date,
+    email: record.email || '',
+    phone: record.phone || '',
+    location: record.branch || '—',
+    manager: '—',
+    salary: Number(record.base_salary || 0),
+    color: COLORS[index % COLORS.length],
+    contractExpiry: record.contract_end || '—',
+    leaveBalance: 0,
+  };
+}
 
 const allEmployees: Employee[] = [
   { id: '1', employeeId: 'EMP-20260101-001', name: 'Rina Sari', initials: 'RS', department: 'HR', position: 'HR Manager', status: 'active', joinDate: '2020-03-15', email: 'rina@company.com', phone: '+62 812-3456-7890', location: 'Jakarta HQ', manager: 'Arif Darmawan', salary: 18000000, color: 'bg-primary-surface text-primary', contractExpiry: '2027-03-15', leaveBalance: 12 },
@@ -297,6 +339,8 @@ function BulkEmailModal({ employees, onClose, onSend }: BulkEmailModalProps) {
 
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>(allEmployees);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [search, setSearch] = useState('');
   const [deptFilter, setDeptFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -311,17 +355,26 @@ export default function EmployeesPage() {
   const [actionEmployee, setActionEmployee] = useState<string | null>(null);
   const { toast } = useToast();
 
+  const loadEmployees = async () => {
+    setLoading(true);
+    setLoadError('');
+    try {
+      const response = await api.get<EmployeeListResponse>('/employees', { params: { page, per_page: PAGE_SIZE, search: search || undefined, status: statusFilter === 'all' ? undefined : statusFilter } });
+      setEmployees(response.data.items.map(mapEmployee));
+    } catch (error: any) {
+      setLoadError(error.response?.data?.detail || 'Could not load employees.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { void loadEmployees(); }, [page, search, statusFilter]);
+
   const departments = ['All', ...Array.from(new Set(employees.map((e) => e.department)))];
 
-  const filtered = useMemo(() =>
-    employees
-      .filter((e) => `${e.name} ${e.employeeId} ${e.position}`.toLowerCase().includes(search.toLowerCase()))
-      .filter((e) => deptFilter === 'All' || e.department === deptFilter)
-      .filter((e) => statusFilter === 'all' || e.status === statusFilter),
-    [employees, search, deptFilter, statusFilter],
-  );
+  const filtered = useMemo(() => employees.filter((e) => `${e.name} ${e.employeeId} ${e.position}`.toLowerCase().includes(search.toLowerCase())).filter((e) => deptFilter === 'All' || e.department === deptFilter).filter((e) => statusFilter === 'all' || e.status === statusFilter), [employees, search, deptFilter, statusFilter]);
 
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const allSelected = paged.length > 0 && paged.every((e) => selected.includes(e.id));
