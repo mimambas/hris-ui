@@ -4,12 +4,22 @@ import Link from 'next/link';
 import { ArrowLeft, Download, Printer, FileText, CheckCircle2, Building2 } from 'lucide-react';
 import ModuleHeader from '@/components/ui/ModuleHeader';
 
+function downloadPayslip() {
+  const content = ['HRIS PAYSLIP', `Employee,${payroll.name}`, `Employee ID,${payroll.id}`, `Period,${payroll.period}`, `Gross,${payroll.gross}`, `Net pay,${payroll.net}`, `Bank,${payroll.bank}`].join('\n');
+  const url = URL.createObjectURL(new Blob([content], { type: 'text/csv;charset=utf-8' }));
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = 'payslip-september-2026.csv';
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 const payroll = { name: 'Rina Sari', id: 'EMP-20260101-001', role: 'HR Manager', department: 'Human Resources', period: 'September 2026', gross: 'Rp 15.000.000', basic: 'Rp 15.000.000', allowance: 'Rp 1.500.000', tax: 'Rp 1.950.000', bpjs: 'Rp 675.000', other: 'Rp 0', net: 'Rp 13.875.000', bank: 'BCA •••• 7890' };
 
 export default function PayslipPage() {
   return <div>
     <Link href="/payroll" className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary-hover transition-colors mb-5"><ArrowLeft size={14} /> Back to Payroll</Link>
-    <ModuleHeader eyebrow="Payroll detail" title="Payslip" description={`${payroll.period} · ${payroll.name}`} action={<><button className="btn-secondary gap-2"><Printer size={15} /> Print</button><button className="btn-cta gap-2"><Download size={15} /> Download PDF</button></>} />
+    <ModuleHeader eyebrow="Payroll detail" title="Payslip" description={`${payroll.period} · ${payroll.name}`} action={<><button onClick={() => window.print()} className="btn-secondary gap-2"><Printer size={15} /> Print</button><button onClick={downloadPayslip} className="btn-cta gap-2"><Download size={15} /> Download PDF</button></>} />
     <div className="max-w-3xl">
       <div className="card p-0 overflow-hidden">
         <div className="bg-surface-dark text-white px-6 sm:px-8 py-6 flex items-start justify-between"><div><div className="flex items-center gap-2 mb-3"><div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center"><span className="text-xs font-bold">H</span></div><span className="text-sm font-bold">HRIS</span></div><p className="text-xs text-indigo-200">PT Maju Bersama Indonesia</p><p className="text-xs text-indigo-200 mt-0.5">Jl. Sudirman Kav. 52-53, Jakarta</p></div><div className="text-right"><p className="text-lg font-bold">PAYSLIP</p><p className="text-xs text-indigo-200 mt-1">{payroll.period}</p><span className="inline-flex items-center gap-1.5 mt-3 rounded-pill bg-cta/20 text-cta-light px-3 py-1 text-[11px] font-semibold"><CheckCircle2 size={12} /> Paid</span></div></div>

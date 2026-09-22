@@ -35,7 +35,18 @@ const categories = ['All Documents', 'Contract', 'Identity', 'Tax', 'Benefits', 
 
 const employees = ['Rina Sari', 'Budi Hartono', 'Sari Dewi', 'Andi Pratama', 'Dewi Lestari', 'Fajar Nugroho', 'Rizky Prasetyo', 'Maya Anggraeni'];
 
-function DocPreviewModal({ doc, onClose }: { doc: Doc; onClose: () => void }) {
+function downloadTextFile(filename: string, content: string, mime = 'text/plain;charset=utf-8') {
+  const url = URL.createObjectURL(new Blob([content], { type: mime }));
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+function DocPreviewModal({ doc, onClose, onDownload }: { doc: Doc; onClose: () => void; onDownload: () => void }) {
   const st = statusMeta[doc.status];
   const Icon = st.icon;
   return (
@@ -65,7 +76,7 @@ function DocPreviewModal({ doc, onClose }: { doc: Doc; onClose: () => void }) {
         </div>
         <div className="px-6 py-4 border-t border-hairline-soft flex gap-3">
           <button onClick={onClose} className="btn-secondary flex-1 justify-center text-sm">Close</button>
-          <button className="btn-cta flex-1 justify-center gap-2 text-sm"><Download size={14} /> Download</button>
+          <button onClick={onDownload} className="btn-cta flex-1 justify-center gap-2 text-sm"><Download size={14} /> Download</button>
         </div>
       </div>
     </div>
@@ -227,7 +238,7 @@ function PolicyTemplatesModal({ onClose }: { onClose: () => void }) {
               </div>
               <div className="flex items-center gap-2">
                 <span className="badge bg-surface-strong text-muted text-[10px]">{t.category}</span>
-                <button onClick={() => { toast(`${t.name} downloaded.`, 'success'); }} className="min-h-9 min-w-9 rounded-lg hover:bg-primary-surface flex items-center justify-center" aria-label={`Download ${t.name}`}><Download size={14} className="text-muted" /></button>
+                <button onClick={() => { downloadTextFile(`${t.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-template.txt`, `${t.name}\n\n${t.desc}\n\nHRIS policy template placeholder.`, 'text/plain;charset=utf-8'); toast(`${t.name} downloaded.`, 'success'); }} className="min-h-9 min-w-9 rounded-lg hover:bg-primary-surface flex items-center justify-center" aria-label={`Download ${t.name}`}><Download size={14} className="text-muted" /></button>
               </div>
             </div>
           ))}
@@ -288,7 +299,8 @@ export default function DocumentsPage() {
 
   const handleDownload = (doc: Doc) => {
     setActionDoc(null);
-    toast(`Downloading ${doc.name} — ${doc.employee}. (${doc.size})`, 'success');
+    downloadTextFile(`${doc.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${doc.employee.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.txt`, `${doc.name}\nEmployee: ${doc.employee}\nType: ${doc.type}\nUploaded: ${doc.uploaded}\nExpiry: ${doc.expiry}\nStatus: ${statusMeta[doc.status].label}\nSize: ${doc.size}`);
+    toast(`Downloaded ${doc.name} — ${doc.employee}.`, 'success');
   };
 
   const filtered = docs.filter((d) => {
@@ -402,7 +414,7 @@ export default function DocumentsPage() {
 
       {showUpload && <div className="fixed inset-0 z-[80] flex items-center justify-center p-4"><div className="absolute inset-0 bg-ink/40" onClick={() => setShowUpload(false)} /><form onSubmit={submitUpload} className="relative w-full max-w-md rounded-2xl bg-canvas border border-hairline shadow-2xl p-6"><div className="flex items-center justify-between mb-5"><div><h2 className="text-base font-bold text-ink">Upload document</h2><p className="text-xs text-muted mt-1">PDF, PNG, JPG, or WebP up to 10 MB</p></div><button type="button" onClick={() => setShowUpload(false)} aria-label="Close upload dialog" className="min-h-10 min-w-10 rounded-md hover:bg-surface-strong flex items-center justify-center"><X size={16} className="text-muted" /></button></div><div className="space-y-4"><label className="block text-sm font-semibold text-ink">Employee<select name="docEmployee" className="input-field mt-1.5">{employees.map((e) => <option key={e}>{e}</option>)}</select></label><label className="block text-sm font-semibold text-ink">Document type<select name="docType" className="input-field mt-1.5"><option>Contract</option><option>Identity</option><option>Tax</option><option>Benefits</option><option>Legal</option><option>Medical</option></select></label><label className="block text-sm font-semibold text-ink">Choose file<input name="file" type="file" accept="application/pdf,image/png,image/jpeg,image/webp" className="input-field mt-1.5 py-2" /></label>{uploadError && <p role="alert" className="text-xs text-semantic-down mt-1">{uploadError}</p>}</div><div className="flex justify-end gap-3 mt-6 pt-4 border-t border-hairline-soft"><button type="button" onClick={() => setShowUpload(false)} className="btn-secondary text-sm">Cancel</button><button type="submit" className="btn-cta text-sm">Upload</button></div></form></div>}
 
-      {previewDoc && <DocPreviewModal doc={previewDoc} onClose={() => setPreviewDoc(null)} />}
+      {previewDoc && <DocPreviewModal doc={previewDoc} onClose={() => setPreviewDoc(null)} onDownload={() => handleDownload(previewDoc)} />}
       {showRequest && <RequestDocsModal onClose={() => setShowRequest(false)} />}
       {showExpiry && <ExpiryAlertModal docs={docs} onClose={() => setShowExpiry(false)} />}
       {showTemplates && <PolicyTemplatesModal onClose={() => setShowTemplates(false)} />}
