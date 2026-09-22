@@ -1,9 +1,0 @@
-backend/
-design-system/
-docs/
-.agents/
-.claude/
-docker-compose.yml
-skills-lock.json
-DESIGN.md
-PRD.md
