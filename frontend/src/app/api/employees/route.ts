@@ -34,11 +34,18 @@ export async function GET(request: Request) {
     const search = searchParams.get('search')?.trim();
     const status = searchParams.get('status');
     const departmentId = searchParams.get('department_id');
+    const departmentName = searchParams.get('department');
     const client = getSupabaseAdmin();
     let query = client.from('employees').select('*, departments(name), positions(title)', { count: 'exact' });
     if (search) query = query.or(`full_name.ilike.%${search}%,employee_id.ilike.%${search}%`);
     if (status && status !== 'all') query = query.eq('status', status);
     if (departmentId && departmentId !== 'all') query = query.eq('department_id', departmentId);
+    if (departmentName && departmentName !== 'All') {
+      const { data: department, error: departmentError } = await client.from('departments').select('id').eq('name', departmentName).maybeSingle();
+      if (departmentError) throw departmentError;
+      if (!department) return NextResponse.json({ items: [], total: 0, page, per_page: perPage, total_pages: 1 });
+      query = query.eq('department_id', department.id);
+    }
     const from = (page - 1) * perPage;
     const { data, count, error } = await query.order('created_at', { ascending: false }).range(from, from + perPage - 1);
     if (error) throw error;

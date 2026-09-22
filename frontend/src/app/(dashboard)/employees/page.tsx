@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import api from '@/lib/api';
 import Link from 'next/link';
 import {
@@ -338,7 +338,9 @@ function BulkEmailModal({ employees, onClose, onSend }: BulkEmailModalProps) {
 }
 
 export default function EmployeesPage() {
-  const [employees, setEmployees] = useState<Employee[]>(allEmployees);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [search, setSearch] = useState('');
@@ -359,8 +361,10 @@ export default function EmployeesPage() {
     setLoading(true);
     setLoadError('');
     try {
-      const response = await api.get<EmployeeListResponse>('/employees', { params: { page, per_page: PAGE_SIZE, search: search || undefined, status: statusFilter === 'all' ? undefined : statusFilter } });
+      const response = await api.get<EmployeeListResponse>('/employees', { params: { page, per_page: PAGE_SIZE, search: search || undefined, status: statusFilter === 'all' ? undefined : statusFilter, department: deptFilter === 'All' ? undefined : deptFilter } });
       setEmployees(response.data.items.map(mapEmployee));
+      setTotal(response.data.total);
+      setTotalPages(Math.max(1, response.data.total_pages));
     } catch (error: any) {
       setLoadError(error.response?.data?.detail || 'Could not load employees.');
     } finally {
@@ -368,32 +372,58 @@ export default function EmployeesPage() {
     }
   };
 
-  useEffect(() => { void loadEmployees(); }, [page, search, statusFilter]);
+  useEffect(() => { void loadEmployees(); }, [page, search, statusFilter, deptFilter]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter, deptFilter]);
 
   const departments = ['All', ...Array.from(new Set(employees.map((e) => e.department)))];
 
-  const filtered = useMemo(() => employees.filter((e) => `${e.name} ${e.employeeId} ${e.position}`.toLowerCase().includes(search.toLowerCase())).filter((e) => deptFilter === 'All' || e.department === deptFilter).filter((e) => statusFilter === 'all' || e.status === statusFilter), [employees, search, deptFilter, statusFilter]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const filtered = employees;
+  const paged = employees;
 
   const allSelected = paged.length > 0 && paged.every((e) => selected.includes(e.id));
   const toggleAll = () => setSelected(allSelected ? paged.filter((e) => !selected.includes(e.id)).length === 0 ? [] : selected.filter((id) => !paged.some((e) => e.id === id)) : [...new Set([...selected, ...paged.map((e) => e.id)])]);
   const toggleOne = (id: string) => setSelected((cur) => cur.includes(id) ? cur.filter((i) => i !== id) : [...cur, id]);
 
-  const activeCount = employees.filter((e) => e.status === 'active').length;
-  const probationCount = employees.filter((e) => e.status === 'probation').length;
+  const activeCount = total > 0 ? (statusFilter === 'active' ? total : employees.filter((e) => e.status === 'active').length) : 0;
+  const probationCount = total > 0 ? (statusFilter === 'probation' ? total : employees.filter((e) => e.status === 'probation').length) : 0;
 
-  const handleImportConfirm = (imported: Employee[]) => {
-    setEmployees((prev) => [...prev, ...imported]);
-    toast(`Imported ${imported.length} employee${imported.length !== 1 ? 's' : ''} successfully.`, 'success');
+  const refreshEmployees = () => { void loadEmployees(); };
+
+  const handleImportConfirm = async (imported: Employee[]) => {
+    let created = 0;
+    for (const employee of imported) {
+      try {
+        await api.post('/employees', {
+          full_name: employee.name,
+          join_date: employee.joinDate,
+          email: employee.email || undefined,
+          phone: employee.phone || undefined,
+          branch: employee.location || undefined,
+          base_salary: employee.salary || undefined,
+          employment_status: employee.status === 'probation' ? 'contract' : 'permanent',
+        });
+        created += 1;
+      } catch {
+        // Continue importing other valid rows and report the final count.
+      }
+    }
+    await loadEmployees();
+    toast(`Imported ${created} of ${imported.length} employee${imported.length !== 1 ? 's' : ''}.`, created === imported.length ? 'success' : 'error');
   };
 
-  const handleBulkStatus = (status: Employee['status']) => {
-    setEmployees((prev) => prev.map((employee) => selected.includes(employee.id) ? { ...employee, status } : employee));
-    toast(`Updated status for ${selected.length} employee${selected.length !== 1 ? 's' : ''}.`, 'success');
-    setShowStatusModal(false);
-    setSelected([]);
+  const handleBulkStatus = async (status: Employee['status']) => {
+    try {
+      await Promise.all(selected.map((id) => api.put(`/employees/${id}`, { status })));
+      await loadEmployees();
+      toast(`Updated status for ${selected.length} employee${selected.length !== 1 ? 's' : ''}.`, 'success');
+      setShowStatusModal(false);
+      setSelected([]);
+    } catch {
+      toast('Could not update all selected employees.', 'error');
+    }
   };
 
   const handleBulkEmail = (subject: string) => {
@@ -484,6 +514,13 @@ export default function EmployeesPage() {
           </div>
         )}
 
+        {loadError && (
+          <div className="m-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 flex items-center justify-between gap-3">
+            <p className="text-sm text-semantic-down">{loadError}</p>
+            <button onClick={refreshEmployees} className="btn-secondary text-xs">Retry</button>
+          </div>
+        )}
+
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px]">
             <thead>
@@ -499,7 +536,9 @@ export default function EmployeesPage() {
               </tr>
             </thead>
             <tbody>
-              {paged.length === 0 ? (
+              {loading ? (
+                <tr><td colSpan={8} className="table-cell text-center text-muted">Loading employees...</td></tr>
+              ) : paged.length === 0 ? (
                 <tr><td colSpan={8}><EmptyState title="No employees found" description="Try a different search term or filter." /></td></tr>
               ) : paged.map((emp) => (
                 <tr key={emp.id} className="table-row">
@@ -528,7 +567,18 @@ export default function EmployeesPage() {
                         {actionEmployee === emp.id && <div className="absolute right-0 top-full mt-1 w-36 rounded-xl bg-canvas border border-hairline shadow-xl z-20 py-1 text-left">
                           <button onClick={() => { setDetailEmp(emp); setActionEmployee(null); }} className="w-full px-3 py-2 text-xs text-body hover:bg-surface-soft">View details</button>
                           <a href={`mailto:${emp.email}`} onClick={() => setActionEmployee(null)} className="block w-full px-3 py-2 text-xs text-body hover:bg-surface-soft">Send email</a>
-                          <button onClick={() => { setEmployees((prev) => prev.map((item) => item.id === emp.id ? { ...item, status: item.status === 'inactive' ? 'active' : 'inactive' } : item)); setActionEmployee(null); toast(`${emp.name} status updated.`, 'success'); }} className="w-full px-3 py-2 text-xs text-body hover:bg-surface-soft">{emp.status === 'inactive' ? 'Activate' : 'Deactivate'}</button>
+                          <button onClick={async () => {
+                            try {
+                              const nextStatus = emp.status === 'inactive' ? 'active' : 'inactive';
+                              if (nextStatus === 'inactive') await api.delete(`/employees/${emp.id}`);
+                              else await api.put(`/employees/${emp.id}`, { status: nextStatus });
+                              await loadEmployees();
+                              setActionEmployee(null);
+                              toast(`${emp.name} status updated.`, 'success');
+                            } catch {
+                              toast(`Could not update ${emp.name}.`, 'error');
+                            }
+                          }} className="w-full px-3 py-2 text-xs text-body hover:bg-surface-soft">{emp.status === 'inactive' ? 'Activate' : 'Deactivate'}</button>
                         </div>}
                       </div>
                     </div>
@@ -540,7 +590,7 @@ export default function EmployeesPage() {
         </div>
 
         <div className="px-5 sm:px-6 py-4 border-t border-hairline-soft flex items-center justify-between">
-          <p className="text-xs text-muted">Showing {paged.length} of {filtered.length} employees {filtered.length !== employees.length && `(filtered from ${employees.length})`}</p>
+          <p className="text-xs text-muted">Showing {paged.length} of {total} employees</p>
           <div className="flex items-center gap-1">
             <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="min-h-10 min-w-10 p-2.5 rounded-md hover:bg-primary-surface transition-colors cursor-pointer disabled:opacity-30" aria-label="Previous page"><ChevronLeft size={16} className="text-muted mx-auto" /></button>
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
