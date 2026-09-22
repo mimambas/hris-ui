@@ -22,10 +22,9 @@ export default function LoginPage() {
     try {
       const res = await api.post('/auth/login', { email, password });
       const { access_token, refresh_token } = res.data;
-      localStorage.setItem('access_token', access_token);
-      const meRes = await api.get('/auth/me');
+      const meRes = await api.get('/auth/me', { headers: { Authorization: `Bearer ${access_token}` } });
       login(meRes.data, access_token, refresh_token);
-      router.push('/');
+      router.replace('/');
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Login failed. Please check your credentials.');
     } finally {

@@ -5,6 +5,7 @@ import { ArrowLeft, Save, Check, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/components/ui/Toast';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import api from '@/lib/api';
 
 const steps = ['Personal Info', 'Employment', 'Compensation', 'Review'];
 
@@ -43,9 +44,40 @@ export default function NewEmployeePage() {
   const saveEmployee = async () => {
     if (!validateStep(0) || !validateStep(1) || !validateStep(2)) { setStep(0); return; }
     setSaving(true);
-    await new Promise((resolve) => setTimeout(resolve, 700));
-    setSaving(false);
-    toast('Employee record created successfully.', 'success');
+    try {
+      await api.post('/employees', {
+        full_name: form.fullName,
+        nik: form.nik || null,
+        npwp: form.npwp || null,
+        place_of_birth: form.placeOfBirth || null,
+        date_of_birth: form.dateOfBirth || null,
+        gender: form.gender || null,
+        phone: form.phone || null,
+        email: form.email || null,
+        address_ktp: form.addressKtp || null,
+        address_domisili: form.addressDomisili || null,
+        emergency_contact_name: form.emergencyName || null,
+        emergency_contact_phone: form.emergencyPhone || null,
+        emergency_contact_relation: form.emergencyRelation || null,
+        join_date: form.joinDate,
+        employment_status: form.employmentStatus,
+        employment_type: form.employmentType,
+        department_id: form.departmentId || null,
+        position_id: form.positionId || null,
+        reporting_to: form.reportingTo || null,
+        branch: form.branch || null,
+        base_salary: form.baseSalary ? Number(form.baseSalary) : null,
+        bank_name: form.bankName || null,
+        bank_account: form.bankAccount || null,
+        bank_account_name: form.bankAccountName || null,
+      });
+      toast('Employee record created successfully.', 'success');
+      window.location.href = '/employees';
+    } catch (error: any) {
+      setErrors([error.response?.data?.detail || 'Could not create employee record. Please try again.']);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const hasData = Object.values(form).some(Boolean);

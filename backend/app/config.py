@@ -1,12 +1,14 @@
-from pydantic_settings import BaseSettings
 from functools import lru_cache
+
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
     # App
     APP_NAME: str = "HRIS"
     APP_VERSION: str = "0.1.0"
-    DEBUG: bool = True
+    DEBUG: bool = False
+    AUTO_CREATE_SCHEMA: bool = False
     API_V1_PREFIX: str = "/api/v1"
 
     # Database
@@ -33,7 +35,21 @@ class Settings(BaseSettings):
     SEED_ADMIN_EMAIL: str = "admin@hris.local"
     SEED_ADMIN_PASSWORD: str = "Admin123!"
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
+
+    @property
+    def async_database_url(self) -> str:
+        if self.DATABASE_URL.startswith("postgres://"):
+            return self.DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
+        if self.DATABASE_URL.startswith("postgresql://"):
+            return self.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return self.DATABASE_URL
+
+    @property
+    def sync_database_url(self) -> str:
+        if self.DATABASE_URL_SYNC.startswith("postgres://"):
+            return self.DATABASE_URL_SYNC.replace("postgres://", "postgresql://", 1)
+        return self.DATABASE_URL_SYNC
 
 
 @lru_cache

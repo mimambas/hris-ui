@@ -2,15 +2,19 @@ from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.dependencies import CurrentUser
 from app.models.user import User
-from app.schemas.auth import LoginRequest, TokenResponse, RefreshRequest, UserResponse
-from app.utils.security import hash_password, verify_password, create_access_token, create_refresh_token, decode_token
-from app.dependencies import get_current_user, CurrentUser
+from app.schemas.auth import LoginRequest, RefreshRequest, TokenResponse, UserResponse
+from app.utils.security import (
+    create_access_token,
+    create_refresh_token,
+    decode_token,
+    verify_password,
+)
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -34,7 +38,10 @@ async def login(data: LoginRequest, db: Annotated[AsyncSession, Depends(get_db)]
 async def refresh_token(data: RefreshRequest, db: Annotated[AsyncSession, Depends(get_db)]):
     payload = decode_token(data.refresh_token)
     if not payload or payload.get("type") != "refresh":
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
+        )
     user = await db.get(User, payload["sub"])
     if not user or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
