@@ -115,7 +115,19 @@ export default function ReportsPage() {
   const { toast } = useToast();
 
   const downloadReport = (name: string, format: string) => {
-    toast(`${name} (${format}) download started.`, 'success');
+    const content = [
+      'Report,Type,Generated,Format',
+      `${name},HRIS report,${new Date().toLocaleDateString('en-GB')},${format}`,
+      '',
+      'This is a UI preview export generated from mock data.',
+    ].join('\n');
+    const url = URL.createObjectURL(new Blob([content], { type: 'text/csv;charset=utf-8' }));
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.${format.toLowerCase() === 'csv' ? 'csv' : 'csv'}`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    toast(`${name} (${format}) downloaded.`, 'success');
   };
 
   const generateReport = (title: string, type: ReportType) => {

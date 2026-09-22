@@ -203,7 +203,18 @@ export default function PayrollPage() {
 
   const handleExport = () => {
     setConfirmExport(false);
-    toast('Bank transfer file exported. CSV format ready for upload to BCA/Mandiri/BNI internet banking.', 'success');
+    const rows = payroll.filter((record) => record.status === 'processed');
+    const csv = [
+      'Employee ID,Employee Name,Bank,Account Number,Net Salary,Status',
+      ...rows.map((record) => [record.id, record.name, record.bank, record.accountNumber, record.netSalary, record.status].join(',')),
+    ].join('\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `payroll-bank-transfer-${period.toLowerCase().replace(/\s+/g, '-')}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    toast(`Exported ${rows.length} processed payroll records as CSV.`, 'success');
   };
 
   const handleReprocess = (id: string) => {

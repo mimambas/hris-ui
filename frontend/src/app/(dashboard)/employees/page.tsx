@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   Plus, Search, Download, Upload, MoreHorizontal, ChevronLeft, ChevronRight,
-  X, Mail, Phone, MapPin, Calendar, Briefcase, Eye, UserRound,
+  X, Mail, Phone, MapPin, Calendar, Briefcase, Eye, UserRound, Send,
 } from 'lucide-react';
 import ModuleHeader from '@/components/ui/ModuleHeader';
 import EmptyState from '@/components/ui/EmptyState';
@@ -262,6 +262,39 @@ function ExportModal({ employeeCount, filteredCount, selectedCount, activeCount,
   );
 }
 
+type BulkStatusModalProps = { count: number; onClose: () => void; onConfirm: (status: Employee['status']) => void };
+function BulkStatusModal({ count, onClose, onConfirm }: BulkStatusModalProps) {
+  const [status, setStatus] = useState<Employee['status']>('active');
+  return (
+    <ModalShell title="Update employee status" onClose={onClose}>
+      <div className="p-6 space-y-5">
+        <p className="text-sm text-body">Select the new status for <strong>{count}</strong> selected employee{count === 1 ? '' : 's'}.</p>
+        <select value={status} onChange={(event) => setStatus(event.target.value as Employee['status'])} className="input-field w-full">
+          <option value="active">Active</option><option value="probation">Probation</option><option value="inactive">Inactive</option>
+        </select>
+        <div className="flex justify-end gap-2"><button onClick={onClose} className="btn-secondary text-sm">Cancel</button><button onClick={() => onConfirm(status)} className="btn-cta text-sm">Update status</button></div>
+      </div>
+    </ModalShell>
+  );
+}
+
+type BulkEmailModalProps = { employees: Employee[]; onClose: () => void; onSend: (subject: string, body: string) => void };
+function BulkEmailModal({ employees, onClose, onSend }: BulkEmailModalProps) {
+  const [subject, setSubject] = useState('');
+  const [body, setBody] = useState('');
+  const valid = subject.trim().length > 0 && body.trim().length > 0;
+  return (
+    <ModalShell title="Send email" onClose={onClose}>
+      <div className="p-6 space-y-4">
+        <div><p className="text-xs font-semibold text-muted mb-2">Recipients ({employees.length})</p><div className="rounded-lg bg-surface-soft p-3 text-xs text-body max-h-20 overflow-y-auto">{employees.map((employee) => employee.email || employee.name).join(', ')}</div></div>
+        <div><label className="text-xs font-semibold text-muted">Subject</label><input value={subject} onChange={(event) => setSubject(event.target.value)} className="input-field w-full mt-2" placeholder="Email subject" /></div>
+        <div><label className="text-xs font-semibold text-muted">Message</label><textarea value={body} onChange={(event) => setBody(event.target.value)} className="input-field w-full mt-2" rows={5} placeholder="Write your message..." /></div>
+        <div className="flex justify-end gap-2"><button onClick={onClose} className="btn-secondary text-sm">Cancel</button><button disabled={!valid} onClick={() => onSend(subject.trim(), body.trim())} className="btn-cta gap-2 text-sm disabled:opacity-50"><Send size={14} /> Send email</button></div>
+      </div>
+    </ModalShell>
+  );
+}
+
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>(allEmployees);
   const [search, setSearch] = useState('');
@@ -273,6 +306,9 @@ export default function EmployeesPage() {
   const [showExport, setShowExport] = useState(false);
   const [showBulkActions, setShowBulkActions] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [actionEmployee, setActionEmployee] = useState<string | null>(null);
   const { toast } = useToast();
 
   const departments = ['All', ...Array.from(new Set(employees.map((e) => e.department)))];
@@ -298,6 +334,19 @@ export default function EmployeesPage() {
   const handleImportConfirm = (imported: Employee[]) => {
     setEmployees((prev) => [...prev, ...imported]);
     toast(`Imported ${imported.length} employee${imported.length !== 1 ? 's' : ''} successfully.`, 'success');
+  };
+
+  const handleBulkStatus = (status: Employee['status']) => {
+    setEmployees((prev) => prev.map((employee) => selected.includes(employee.id) ? { ...employee, status } : employee));
+    toast(`Updated status for ${selected.length} employee${selected.length !== 1 ? 's' : ''}.`, 'success');
+    setShowStatusModal(false);
+    setSelected([]);
+  };
+
+  const handleBulkEmail = (subject: string) => {
+    toast(`Email sent to ${selected.length} employee${selected.length !== 1 ? 's' : ''}: ${subject}`, 'success');
+    setShowEmailModal(false);
+    setShowBulkActions(false);
   };
 
   const exportColumns: Record<string, string[]> = {
@@ -371,8 +420,8 @@ export default function EmployeesPage() {
                 <button onClick={() => setShowBulkActions(!showBulkActions)} className="text-xs font-semibold text-primary hover:text-primary-hover">Bulk actions</button>
                 {showBulkActions && (
                   <div className="absolute right-0 top-full mt-2 w-44 rounded-xl bg-canvas border border-hairline shadow-xl z-20 py-1">
-                    <button onClick={() => { toast(`Status update queued for ${selected.length} employees.`, 'success'); setShowBulkActions(false); }} className="w-full text-left px-3 py-2.5 text-xs text-body hover:bg-surface-soft">Update status</button>
-                    <button onClick={() => { toast(`Email composer opened for ${selected.length} employees.`, 'success'); setShowBulkActions(false); }} className="w-full text-left px-3 py-2.5 text-xs text-body hover:bg-surface-soft">Send email</button>
+                    <button onClick={() => { setShowStatusModal(true); setShowBulkActions(false); }} className="w-full text-left px-3 py-2.5 text-xs text-body hover:bg-surface-soft">Update status</button>
+                    <button onClick={() => { setShowEmailModal(true); setShowBulkActions(false); }} className="w-full text-left px-3 py-2.5 text-xs text-body hover:bg-surface-soft">Send email</button>
                     <button onClick={() => { setShowExport(true); setShowBulkActions(false); }} className="w-full text-left px-3 py-2.5 text-xs text-body hover:bg-surface-soft">Export selected</button>
                   </div>
                 )}
@@ -421,7 +470,14 @@ export default function EmployeesPage() {
                   <td className="table-cell text-right">
                     <div className="flex items-center justify-end gap-1">
                       <button onClick={() => setDetailEmp(emp)} className="min-h-10 min-w-10 p-2.5 rounded-md hover:bg-primary-surface transition-colors cursor-pointer" aria-label={`View ${emp.name}`} title="View details"><Eye size={15} className="text-muted mx-auto" /></button>
-                      <button className="min-h-10 min-w-10 p-2.5 rounded-md hover:bg-primary-surface transition-colors cursor-pointer" aria-label={`Actions for ${emp.name}`} title="More actions"><MoreHorizontal size={16} className="text-muted mx-auto" /></button>
+                      <div className="relative">
+                        <button onClick={() => setActionEmployee(actionEmployee === emp.id ? null : emp.id)} className="min-h-10 min-w-10 p-2.5 rounded-md hover:bg-primary-surface transition-colors cursor-pointer" aria-label={`Actions for ${emp.name}`} title="More actions"><MoreHorizontal size={16} className="text-muted mx-auto" /></button>
+                        {actionEmployee === emp.id && <div className="absolute right-0 top-full mt-1 w-36 rounded-xl bg-canvas border border-hairline shadow-xl z-20 py-1 text-left">
+                          <button onClick={() => { setDetailEmp(emp); setActionEmployee(null); }} className="w-full px-3 py-2 text-xs text-body hover:bg-surface-soft">View details</button>
+                          <a href={`mailto:${emp.email}`} onClick={() => setActionEmployee(null)} className="block w-full px-3 py-2 text-xs text-body hover:bg-surface-soft">Send email</a>
+                          <button onClick={() => { setEmployees((prev) => prev.map((item) => item.id === emp.id ? { ...item, status: item.status === 'inactive' ? 'active' : 'inactive' } : item)); setActionEmployee(null); toast(`${emp.name} status updated.`, 'success'); }} className="w-full px-3 py-2 text-xs text-body hover:bg-surface-soft">{emp.status === 'inactive' ? 'Activate' : 'Deactivate'}</button>
+                        </div>}
+                      </div>
                     </div>
                   </td>
                 </tr>
@@ -443,6 +499,14 @@ export default function EmployeesPage() {
       </div>
 
       {detailEmp && <EmployeeDetailModal emp={detailEmp} onClose={() => setDetailEmp(null)} />}
+
+      {showStatusModal && (
+        <BulkStatusModal count={selected.length} onClose={() => setShowStatusModal(false)} onConfirm={handleBulkStatus} />
+      )}
+
+      {showEmailModal && (
+        <BulkEmailModal employees={employees.filter((e) => selected.includes(e.id))} onClose={() => setShowEmailModal(false)} onSend={handleBulkEmail} />
+      )}
 
       {showImport && (
         <ImportModal onClose={() => setShowImport(false)} onConfirm={handleImportConfirm} />

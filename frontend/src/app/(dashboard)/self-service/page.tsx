@@ -46,6 +46,26 @@ function rupiah(n: number) {
   return `Rp ${n.toLocaleString('id-ID')}`;
 }
 
+function downloadPayslip(data: typeof payslips[number]) {
+  const content = [
+    'HRIS PAYSLIP',
+    `Employee,${profile.name}`,
+    `Employee ID,${profile.employeeId}`,
+    `Period,${data.month}`,
+    '',
+    'Item,Amount',
+    `Gross salary,${data.gross}`,
+    `Deductions,${data.deductions}`,
+    `Net salary,${data.net}`,
+  ].join('\n');
+  const url = URL.createObjectURL(new Blob([content], { type: 'text/csv;charset=utf-8' }));
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `payslip-${data.month.toLowerCase().replace(/\s+/g, '-')}.csv`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 function Progress({ value, max }: { value: number; max: number }) {
   const pct = Math.round(value / max * 100);
   return (
@@ -132,7 +152,7 @@ export default function SelfServicePage() {
       {tab === 'Payslips' && (
         <PayslipsTab
           onView={setPayslip}
-          onDownload={() => toast('Payslip download started.', 'success')}
+          onDownload={(data) => { downloadPayslip(data); toast('Payslip download started.', 'success'); }}
         />
       )}
       {tab === 'Leave' && <LeaveTab onRequest={() => setShowLeave(true)} />}
@@ -151,7 +171,7 @@ export default function SelfServicePage() {
         <PayslipModal
           data={payslip}
           onClose={() => setPayslip(null)}
-          onDownload={() => toast('Payslip PDF download started.', 'success')}
+          onDownload={() => { downloadPayslip(payslip); toast('Payslip PDF download started.', 'success'); }}
         />
       )}
       {showLeave && (
@@ -244,7 +264,7 @@ function Overview({ onTab }: { onTab: (t: Tab) => void }) {
 
 /* ─── Tab: Payslips ─── */
 
-function PayslipsTab({ onView, onDownload }: { onView: (d: typeof payslips[number]) => void; onDownload: () => void }) {
+function PayslipsTab({ onView, onDownload }: { onView: (d: typeof payslips[number]) => void; onDownload: (d: typeof payslips[number]) => void }) {
   return (
     <div className="card">
       <div className="flex items-center gap-3 mb-5">
@@ -276,7 +296,7 @@ function PayslipsTab({ onView, onDownload }: { onView: (d: typeof payslips[numbe
                 <td className="table-cell">
                   <div className="flex gap-1">
                     <button onClick={() => onView(row)} className="min-h-9 px-3 rounded-lg text-xs font-semibold text-primary hover:bg-primary-surface">View</button>
-                    <button onClick={onDownload} className="min-h-9 min-w-9 rounded-lg hover:bg-primary-surface flex items-center justify-center" aria-label={`Download ${row.month}`}>
+                    <button onClick={() => onDownload(row)} className="min-h-9 min-w-9 rounded-lg hover:bg-primary-surface flex items-center justify-center" aria-label={`Download ${row.month}`}>
                       <Download size={14} className="text-muted" />
                     </button>
                   </div>
