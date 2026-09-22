@@ -9,6 +9,9 @@ import ModuleHeader from '@/components/ui/ModuleHeader';
 import StatCard from '@/components/ui/StatCard';
 import EmptyState from '@/components/ui/EmptyState';
 import { useToast } from '@/components/ui/Toast';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
+
+type ApprovalStep = { step: string; approver: string; status: 'pending' | 'approved' | 'rejected'; date?: string; reason?: string };
 
 type LeaveRequest = {
   id: string;
@@ -26,6 +29,7 @@ type LeaveRequest = {
   reviewedBy?: string;
   reviewDate?: string;
   rejectReason?: string;
+  approvalChain: ApprovalStep[];
   timeline: { action: string; by: string; date: string; note?: string }[];
 };
 
@@ -33,12 +37,17 @@ const initialRequests: LeaveRequest[] = [
   {
     id: '1', name: 'Budi Hartono', initials: 'BH', department: 'Engineering', type: 'Annual Leave',
     from: '22 Sep', to: '24 Sep', days: 3, status: 'pending', reason: 'Family vacation to Bali', balance: 9,
-    submittedDate: '18 Sep 2026', timeline: [{ action: 'Request submitted', by: 'Budi Hartono', date: '18 Sep, 14:30' }],
+    submittedDate: '18 Sep 2026', approvalChain: [
+      { step: 'Line Manager', approver: 'Line Manager', status: 'pending' },
+      { step: 'HR Manager', approver: 'HR Manager', status: 'pending' },
+    ],
+    timeline: [{ action: 'Request submitted', by: 'Budi Hartono', date: '18 Sep, 14:30' }],
   },
   {
     id: '2', name: 'Sari Dewi', initials: 'SD', department: 'Marketing', type: 'Sick Leave',
     from: '20 Sep', to: '20 Sep', days: 1, status: 'approved', reason: 'Medical appointment — dentist checkup', balance: 14,
     submittedDate: '19 Sep 2026', reviewedBy: 'Rina Sari', reviewDate: '19 Sep 2026',
+    approvalChain: defaultApprovalChain('approved', 'Rina Sari', '19 Sep 2026'),
     timeline: [
       { action: 'Request submitted', by: 'Sari Dewi', date: '19 Sep, 08:15' },
       { action: 'Approved', by: 'Rina Sari', date: '19 Sep, 09:30', note: 'Approved. Get well soon!' },
@@ -47,12 +56,17 @@ const initialRequests: LeaveRequest[] = [
   {
     id: '3', name: 'Andi Pratama', initials: 'AP', department: 'Finance', type: 'Annual Leave',
     from: '27 Sep', to: '30 Sep', days: 4, status: 'pending', reason: 'Wedding ceremony', balance: 8,
-    submittedDate: '15 Sep 2026', timeline: [{ action: 'Request submitted', by: 'Andi Pratama', date: '15 Sep, 10:00' }],
+    submittedDate: '15 Sep 2026', approvalChain: [
+      { step: 'Line Manager', approver: 'Line Manager', status: 'pending' },
+      { step: 'HR Manager', approver: 'HR Manager', status: 'pending' },
+    ],
+    timeline: [{ action: 'Request submitted', by: 'Andi Pratama', date: '15 Sep, 10:00' }],
   },
   {
     id: '4', name: 'Maya Anggraeni', initials: 'MA', department: 'Design', type: 'Personal Leave',
     from: '18 Sep', to: '19 Sep', days: 2, status: 'approved', reason: 'Moving house', balance: 13,
     submittedDate: '14 Sep 2026', reviewedBy: 'Budi Hartono', reviewDate: '14 Sep 2026',
+    approvalChain: defaultApprovalChain('approved', 'Budi Hartono', '14 Sep 2026'),
     timeline: [
       { action: 'Request submitted', by: 'Maya Anggraeni', date: '14 Sep, 11:00' },
       { action: 'Approved', by: 'Budi Hartono', date: '14 Sep, 15:45' },
@@ -62,6 +76,7 @@ const initialRequests: LeaveRequest[] = [
     id: '5', name: 'Fajar Nugroho', initials: 'FN', department: 'Engineering', type: 'Annual Leave',
     from: '15 Sep', to: '17 Sep', days: 3, status: 'approved', reason: 'Travel to Yogyakarta', balance: 11,
     submittedDate: '10 Sep 2026', reviewedBy: 'Budi Hartono', reviewDate: '10 Sep 2026',
+    approvalChain: defaultApprovalChain('approved', 'Budi Hartono', '10 Sep 2026'),
     timeline: [
       { action: 'Request submitted', by: 'Fajar Nugroho', date: '10 Sep, 09:00' },
       { action: 'Approved', by: 'Budi Hartono', date: '10 Sep, 14:20' },
@@ -70,13 +85,21 @@ const initialRequests: LeaveRequest[] = [
   {
     id: '6', name: 'Rina Sari', initials: 'RS', department: 'HR', type: 'Maternity Leave',
     from: '01 Oct', to: '31 Dec', days: 66, status: 'pending', reason: 'Maternity leave — expected due date October 5', balance: 12,
-    submittedDate: '12 Sep 2026', timeline: [{ action: 'Request submitted', by: 'Rina Sari', date: '12 Sep, 16:00' }],
+    submittedDate: '12 Sep 2026', approvalChain: [
+      { step: 'Line Manager', approver: 'Line Manager', status: 'pending' },
+      { step: 'HR Manager', approver: 'HR Manager', status: 'pending' },
+    ],
+    timeline: [{ action: 'Request submitted', by: 'Rina Sari', date: '12 Sep, 16:00' }],
   },
   {
     id: '7', name: 'Rizky Prasetyo', initials: 'RP', department: 'Engineering', type: 'Annual Leave',
     from: '01 Sep', to: '03 Sep', days: 3, status: 'rejected', reason: 'Personal trip', balance: 11,
     submittedDate: '25 Aug 2026', reviewedBy: 'Budi Hartono', reviewDate: '26 Aug 2026',
     rejectReason: 'Too many engineers already on leave that week. Please reschedule.',
+    approvalChain: [
+      { step: 'Line Manager', approver: 'Budi Hartono', status: 'rejected', date: '26 Aug 2026', reason: 'Too many engineers already on leave that week. Please reschedule.' },
+      { step: 'HR Manager', approver: 'HR Manager', status: 'pending' },
+    ],
     timeline: [
       { action: 'Request submitted', by: 'Rizky Prasetyo', date: '25 Aug, 08:30' },
       { action: 'Rejected', by: 'Budi Hartono', date: '26 Aug, 10:15', note: 'Too many engineers already on leave that week. Please reschedule.' },
@@ -85,11 +108,22 @@ const initialRequests: LeaveRequest[] = [
   {
     id: '8', name: 'Dewi Lestari', initials: 'DL', department: 'HR', type: 'Personal Leave',
     from: '05 Oct', to: '05 Oct', days: 1, status: 'pending', reason: 'Family matter', balance: 15,
-    submittedDate: '20 Sep 2026', timeline: [{ action: 'Request submitted', by: 'Dewi Lestari', date: '20 Sep, 13:00' }],
+    submittedDate: '20 Sep 2026', approvalChain: [
+      { step: 'Line Manager', approver: 'Line Manager', status: 'pending' },
+      { step: 'HR Manager', approver: 'HR Manager', status: 'pending' },
+    ],
+    timeline: [{ action: 'Request submitted', by: 'Dewi Lestari', date: '20 Sep, 13:00' }],
   },
 ];
 
 const leaveTypes = ['Annual Leave', 'Sick Leave', 'Personal Leave', 'Maternity Leave', 'Unpaid Leave'] as const;
+
+function defaultApprovalChain(status: LeaveRequest['status'], reviewedBy?: string, date?: string, reason?: string): ApprovalStep[] {
+  return [
+    { step: 'Line Manager', approver: reviewedBy || 'Line Manager', status: status === 'pending' ? 'pending' : status === 'rejected' ? 'rejected' : 'approved', date: status === 'pending' ? undefined : date, reason: status === 'rejected' ? reason : undefined },
+    { step: 'HR Manager', approver: 'HR Manager', status: status === 'approved' ? 'approved' : 'pending', date: status === 'approved' ? date : undefined },
+  ];
+}
 
 const statusMeta: Record<string, { label: string; color: string; icon: typeof CheckCircle2 }> = {
   pending: { label: 'Pending', color: 'bg-amber-50 text-accent-yellow', icon: Clock },
@@ -105,9 +139,13 @@ const balances = [
   { type: 'Maternity Leave', used: 0, total: 90 },
 ];
 
-function RequestDetailModal({ request, onClose }: { request: LeaveRequest; onClose: () => void }) {
+function RequestDetailModal({ request, onClose, onApprove, onReject }: { request: LeaveRequest; onClose: () => void; onApprove: (id: string) => void; onReject: (id: string, reason: string) => void }) {
   const st = statusMeta[request.status];
   const Icon = st.icon;
+  const [showReject, setShowReject] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const pendingIndex = request.approvalChain.findIndex((step) => step.status === 'pending');
+  const currentStep = pendingIndex >= 0 ? request.approvalChain[pendingIndex] : undefined;
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-ink/40" onClick={onClose} />
@@ -141,19 +179,54 @@ function RequestDetailModal({ request, onClose }: { request: LeaveRequest; onClo
           )}
 
           <div>
-            <h3 className="text-xs font-bold text-ink uppercase tracking-wider mb-3">Timeline</h3>
+            <h3 className="text-xs font-bold text-ink uppercase tracking-wider mb-3">Approval chain</h3>
+            <div className="space-y-0" role="list" aria-label="Approval chain steps">
+              {request.approvalChain.map((step, i) => {
+                const isCurrentPending = i === pendingIndex;
+                const StepIcon = step.status === 'approved' ? CheckCircle2 : step.status === 'rejected' ? XCircle : Clock;
+                const circleBg = step.status === 'approved' ? 'bg-cta text-white' : step.status === 'rejected' ? 'bg-red-500 text-white' : 'bg-amber-100 text-amber-600';
+                const lineBg = step.status === 'approved' ? 'bg-cta' : step.status === 'rejected' ? 'bg-red-300' : 'bg-hairline';
+                return <div key={`${step.step}-${i}`} className="flex gap-3 pb-4 last:pb-0" role="listitem">
+                  <div className="flex flex-col items-center">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${circleBg}`} aria-label={`${step.step}: ${step.status}`}><StepIcon size={15} /></div>
+                    {i < request.approvalChain.length - 1 && <div className={`w-px flex-1 ${lineBg} mt-1`} />}
+                  </div>
+                  <div className="pt-1 flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2"><p className="text-sm font-semibold text-ink">{step.step}</p><span className={`badge capitalize ${step.status === 'approved' ? 'bg-cta-surface text-cta-hover' : step.status === 'rejected' ? 'bg-red-50 text-semantic-down' : 'bg-amber-50 text-accent-yellow'}`}>{step.status}</span></div>
+                    <p className="text-xs text-muted mt-0.5">{step.approver}{step.date ? ` · ${step.date}` : ''}</p>
+                    {step.reason && <p className="text-xs text-body mt-1 bg-red-50 rounded-lg p-2">{step.reason}</p>}
+                    {isCurrentPending && showReject && (
+                      <div className="mt-3">
+                        <label className="block">
+                          <span className="text-sm font-semibold text-ink">Rejection reason <span className="text-semantic-down">*</span></span>
+                          <textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} className="input-field mt-1.5 min-h-[80px] resize-y" placeholder="e.g. Too many team members already on leave during this period..." aria-label="Rejection reason" />
+                          {rejectReason.length === 0 && <p className="text-[11px] text-muted mt-1">Reason is required</p>}
+                        </label>
+                        <div className="flex gap-2 mt-2">
+                          <button onClick={() => { setShowReject(false); setRejectReason(''); }} className="btn-secondary min-h-10 text-xs">Cancel</button>
+                          <button onClick={() => { if (rejectReason.trim()) { onReject(request.id, rejectReason.trim()); onClose(); } }} disabled={!rejectReason.trim()} className="min-h-10 px-4 rounded-pill bg-semantic-down text-white text-xs font-semibold hover:bg-red-700 transition-colors disabled:opacity-40">Confirm reject</button>
+                        </div>
+                      </div>
+                    )}
+                    {isCurrentPending && !showReject && (
+                      <div className="flex gap-2 mt-2">
+                        <button onClick={() => { onApprove(request.id); onClose(); }} className="min-h-10 px-4 rounded-pill bg-primary text-white text-xs font-semibold hover:bg-primary-hover transition-colors" aria-label={`Approve at ${step.step}`}>Approve</button>
+                        <button onClick={() => setShowReject(true)} className="min-h-10 px-4 rounded-pill bg-red-50 text-semantic-down text-xs font-semibold hover:bg-red-100 transition-colors" aria-label={`Reject at ${step.step}`}>Reject</button>
+                      </div>
+                    )}
+                  </div>
+                </div>;
+              })}
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <h3 className="text-xs font-bold text-ink uppercase tracking-wider mb-3">Activity timeline</h3>
             <div className="space-y-0">
               {request.timeline.map((t, i) => (
                 <div key={i} className="flex gap-3 pb-4 last:pb-0">
-                  <div className="flex flex-col items-center">
-                    <div className={`w-3 h-3 rounded-full shrink-0 mt-1 ${i === request.timeline.length - 1 ? 'bg-primary' : 'bg-hairline'}`} />
-                    {i < request.timeline.length - 1 && <div className="w-px flex-1 bg-hairline mt-1" />}
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-ink">{t.action}</p>
-                    <p className="text-xs text-muted mt-0.5">by {t.by} · {t.date}</p>
-                    {t.note && <p className="text-xs text-body mt-1 bg-surface-soft rounded-lg p-2">{t.note}</p>}
-                  </div>
+                  <div className="flex flex-col items-center"><div className={`w-3 h-3 rounded-full shrink-0 mt-1 ${i === request.timeline.length - 1 ? 'bg-primary' : 'bg-hairline'}`} />{i < request.timeline.length - 1 && <div className="w-px flex-1 bg-hairline mt-1" />}</div>
+                  <div><p className="text-sm font-semibold text-ink">{t.action}</p><p className="text-xs text-muted mt-0.5">by {t.by} · {t.date}</p>{t.note && <p className="text-xs text-body mt-1 bg-surface-soft rounded-lg p-2">{t.note}</p>}</div>
                 </div>
               ))}
             </div>
@@ -320,24 +393,47 @@ export default function LeavePage() {
   const pendingCount = requests.filter((r) => r.status === 'pending').length;
   const approvedCount = requests.filter((r) => r.status === 'approved').length;
 
+  const advanceChain = (rows: LeaveRequest[], id: string, action: 'approve' | 'reject', reason?: string): LeaveRequest[] => {
+    const now = new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+    const nowDate = new Date().toLocaleDateString('en-GB');
+    return rows.map((r) => {
+      if (r.id !== id) return r;
+      const chain = r.approvalChain.map((s) => ({ ...s }));
+      const idx = chain.findIndex((s) => s.status === 'pending');
+      if (idx === -1) return r;
+      if (action === 'approve') {
+        chain[idx] = { ...chain[idx], status: 'approved', approver: 'You', date: now };
+      } else {
+        chain[idx] = { ...chain[idx], status: 'rejected', approver: 'You', date: now, reason };
+      }
+      const allApproved = chain.every((s) => s.status === 'approved');
+      const newStatus = action === 'reject' ? 'rejected' as const : allApproved ? 'approved' as const : 'pending' as const;
+      const label = action === 'approve' ? (allApproved ? 'Approved' : 'Step approved') : 'Rejected';
+      return {
+        ...r,
+        status: newStatus,
+        approvalChain: chain,
+        rejectReason: action === 'reject' ? reason : r.rejectReason,
+        reviewedBy: newStatus !== 'pending' ? 'You' : r.reviewedBy,
+        reviewDate: newStatus !== 'pending' ? nowDate : r.reviewDate,
+        timeline: [...r.timeline, { action: label, by: 'You', date: now, note: action === 'reject' ? reason : undefined }],
+      };
+    });
+  };
+
   const handleApprove = (id: string) => {
     const req = requests.find((r) => r.id === id);
     if (!req) return;
-    setRequests((rows) => rows.map((r) => r.id === id ? {
-      ...r, status: 'approved' as const, reviewedBy: 'You', reviewDate: new Date().toLocaleDateString('en-GB'),
-      timeline: [...r.timeline, { action: 'Approved', by: 'You', date: new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) }],
-    } : r));
-    toast(`${req.name}'s leave request approved.`, 'success');
-    setReviewTarget(null);
+    setRequests((rows) => advanceChain(rows, id, 'approve'));
+    const pendingIdx = req.approvalChain.findIndex((s) => s.status === 'pending');
+    const hasMoreSteps = pendingIdx !== -1 && pendingIdx < req.approvalChain.length - 1;
+    toast(hasMoreSteps ? 'Approved. Forwarded to next approver.' : `${req.name}'s leave request fully approved.`, 'success');
   };
 
   const handleReject = (id: string, reason: string) => {
     const req = requests.find((r) => r.id === id);
     if (!req) return;
-    setRequests((rows) => rows.map((r) => r.id === id ? {
-      ...r, status: 'rejected' as const, reviewedBy: 'You', rejectReason: reason, reviewDate: new Date().toLocaleDateString('en-GB'),
-      timeline: [...r.timeline, { action: 'Rejected', by: 'You', date: new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }), note: reason }],
-    } : r));
+    setRequests((rows) => advanceChain(rows, id, 'reject', reason));
     toast(`${req.name}'s leave request rejected.`, 'success');
     setRejectTarget(null);
   };
@@ -488,7 +584,7 @@ export default function LeavePage() {
         </div>
       </div>
 
-      {selectedReq && <RequestDetailModal request={selectedReq} onClose={() => setSelectedReq(null)} />}
+      {selectedReq && <RequestDetailModal request={selectedReq} onClose={() => setSelectedReq(null)} onApprove={handleApprove} onReject={handleReject} />}
       {showRequest && <NewRequestModal onClose={() => setShowRequest(false)} />}
       {rejectTarget && (
         <RejectModal onClose={() => setRejectTarget(null)} onReject={(reason) => handleReject(rejectTarget, reason)} />

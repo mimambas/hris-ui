@@ -27,6 +27,28 @@
     --semantic-down: #ef4444;
   }
 
+  [data-theme="dark"] {
+    --primary: #818cf8;
+    --primary-hover: #6366f1;
+    --primary-light: #a5b4fc;
+    --primary-surface: #1e1b4b;
+    --cta: #34d399;
+    --cta-hover: #10b981;
+    --cta-surface: #064e3b;
+    --ink: #f1f5f9;
+    --body-text: #cbd5e1;
+    --muted: #94a3b8;
+    --muted-soft: #64748b;
+    --hairline: #334155;
+    --hairline-soft: #1e293b;
+    --canvas: #0f172a;
+    --surface-soft: #1e293b;
+    --surface-strong: #334155;
+    --surface-dark: #0f172a;
+    --semantic-up: #34d399;
+    --semantic-down: #f87171;
+  }
+
   * { box-sizing: border-box; }
 
   html { scroll-behavior: smooth; }
@@ -45,8 +67,8 @@
 
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: var(--surface-soft); }
-  ::-webkit-scrollbar-thumb { background: #c7d2fe; border-radius: 100px; }
-  ::-webkit-scrollbar-thumb:hover { background: var(--primary-light); }
+  ::-webkit-scrollbar-thumb { background: var(--primary-light); border-radius: 100px; opacity: 0.5; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--primary); }
 
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
@@ -75,7 +97,7 @@
 
   .btn-secondary {
     @apply inline-flex min-h-11 items-center justify-center rounded-pill px-5 py-3 text-sm font-semibold
-           bg-surface-strong text-ink hover:bg-slate-200 active:bg-slate-300
+           bg-surface-strong text-ink hover:bg-primary-surface active:bg-primary-surface
            transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:ring-offset-2;
   }
 

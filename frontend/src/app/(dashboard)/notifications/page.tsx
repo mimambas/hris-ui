@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import ModuleHeader from '@/components/ui/ModuleHeader';
 import EmptyState from '@/components/ui/EmptyState';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { useToast } from '@/components/ui/Toast';
 
 type Notification = {
@@ -30,6 +31,14 @@ const initialNotifications: Notification[] = [
   { id: '6', icon: FileText, title: 'Document uploaded', desc: 'BPJS Certificate for Dewi Lestari has been uploaded', time: '2 days ago', unread: false, color: 'bg-sky-50 text-sky-600', category: 'document', group: 'older' },
   { id: '7', icon: Bell, title: 'System maintenance', desc: 'Scheduled maintenance on Saturday, 27 Sep 2026 from 22:00 to 02:00 WIB', time: '3 days ago', unread: false, color: 'bg-surface-strong text-muted', category: 'system', group: 'older' },
   { id: '8', icon: MessageCircle, title: 'Probation review reminder', desc: "Larasati Hadi's 3-month probation review is due on 25 Sep 2026", time: '3 days ago', unread: false, color: 'bg-amber-50 text-accent-yellow', category: 'review', group: 'older' },
+  { id: '9', icon: CheckCircle2, title: 'Leave approved by HR', desc: 'Dewi Lestari\'s annual leave (22-24 Sep) has been approved by HR', time: '4 days ago', unread: false, color: 'bg-cta-surface text-cta-hover', category: 'leave', group: 'older' },
+  { id: '10', icon: Clock, title: 'Late arrival alert', desc: 'Fajar Nugroho clocked in 15 minutes late on 17 Sep 2026', time: '5 days ago', unread: false, color: 'bg-amber-50 text-accent-yellow', category: 'alert', group: 'older' },
+  { id: '11', icon: Bell, title: 'Payroll deadline reminder', desc: 'October payroll processing deadline is 30 Sep 2026', time: '5 days ago', unread: false, color: 'bg-primary-surface text-primary', category: 'payroll', group: 'older' },
+  { id: '12', icon: Users, title: 'New hire welcome', desc: 'Rizky Pratama has completed onboarding checklist for Software Engineer', time: '1 week ago', unread: false, color: 'bg-violet-50 text-violet-600', category: 'onboarding', group: 'older' },
+  { id: '13', icon: AlertTriangle, title: 'Overtime limit reached', desc: 'Sinta Kusuma has exceeded the 40-hour monthly overtime limit', time: '1 week ago', unread: false, color: 'bg-amber-50 text-accent-yellow', category: 'alert', group: 'older' },
+  { id: '14', icon: FileText, title: 'Policy document updated', desc: 'Company remote work policy has been updated for Q4 2026', time: '1 week ago', unread: false, color: 'bg-sky-50 text-sky-600', category: 'document', group: 'older' },
+  { id: '15', icon: CheckCircle2, title: 'Expense claim rejected', desc: "Arif Rahman's equipment claim was rejected — exceeding budget limit", time: '2 weeks ago', unread: false, color: 'bg-red-50 text-semantic-down', category: 'expense', group: 'older' },
+  { id: '16', icon: Bell, title: 'Security alert', desc: 'New login detected from Chrome on macOS — IP 103.25.xx.xx', time: '2 weeks ago', unread: false, color: 'bg-surface-strong text-muted', category: 'system', group: 'older' },
 ];
 
 const categoryLabels: Record<string, string> = { leave: 'Leave', payroll: 'Payroll', alert: 'Alerts', onboarding: 'Onboarding', expense: 'Expenses', document: 'Documents', system: 'System', review: 'Reviews' };
@@ -42,6 +51,8 @@ export default function NotificationsPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [deleteAll, setDeleteAll] = useState(false);
   const { toast } = useToast();
 
   const filtered = useMemo(() => notifications.filter((n) => {
@@ -65,7 +76,7 @@ export default function NotificationsPage() {
   const selectedNotif = notifications.find((n) => n.id === selected);
 
   return <div>
-    <ModuleHeader eyebrow="Stay informed" title="Notifications" description="Catch up on everything that's happening across your organization" action={<div className="flex gap-2"><button onClick={markAllRead} disabled={unreadCount === 0} className="btn-secondary gap-2 text-xs disabled:opacity-50"><CheckCheck size={14} /> Mark all as read</button></div>} />
+    <ModuleHeader eyebrow="Stay informed" title="Notifications" description="Catch up on everything that's happening across your organization" action={<div className="flex gap-2"><button onClick={markAllRead} disabled={unreadCount === 0} className="btn-secondary gap-2 text-xs disabled:opacity-50"><CheckCheck size={14} /> Mark all as read</button>{notifications.length > 0 && <button onClick={() => setDeleteAll(true)} className="btn-secondary gap-2 text-xs text-semantic-down"><Trash2 size={14} /> Clear all</button>}</div>} />
 
     <div className="flex flex-wrap items-center gap-2 mb-6">
       <button onClick={() => setFilter('all')} className={`min-h-10 px-4 rounded-pill text-xs font-semibold transition-colors ${filter === 'all' ? 'bg-primary text-white' : 'bg-surface-strong text-muted hover:text-ink'}`}>All</button>
@@ -108,7 +119,7 @@ export default function NotificationsPage() {
                         <span className="text-[10px] text-muted font-semibold">{categoryLabels[notification.category]}</span>
                       </div>
                     </div>
-                    <button onClick={(e) => { e.stopPropagation(); deleteNotification(notification.id); }} className="min-h-9 min-w-9 rounded-md hover:bg-red-50 shrink-0 flex items-center justify-center transition-colors" aria-label={`Delete notification: ${notification.title}`}>
+                    <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(notification.id); }} className="min-h-9 min-w-9 rounded-md hover:bg-red-50 shrink-0 flex items-center justify-center transition-colors" aria-label={`Delete notification: ${notification.title}`}>
                       <Trash2 size={14} className="text-muted-soft hover:text-semantic-down" />
                     </button>
                   </div>
@@ -165,5 +176,27 @@ export default function NotificationsPage() {
         </div>
       </div>
     </div>
+    {deleteTarget && (
+      <ConfirmDialog
+        open
+        title="Delete notification"
+        description="This notification will be permanently removed."
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={() => { deleteNotification(deleteTarget); setDeleteTarget(null); }}
+        onCancel={() => setDeleteTarget(null)}
+      />
+    )}
+    {deleteAll && (
+      <ConfirmDialog
+        open
+        title="Clear all notifications"
+        description="All notifications will be permanently removed."
+        confirmLabel="Clear all"
+        variant="danger"
+        onConfirm={() => { setNotifications([]); setSelected(null); setDeleteAll(false); toast('All notifications cleared.', 'success'); }}
+        onCancel={() => setDeleteAll(false)}
+      />
+    )}
   </div>;
 }

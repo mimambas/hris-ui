@@ -10,7 +10,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <Sidebar />
         <div className="flex-1 ml-0 lg:ml-64 min-w-0">
           <Topbar />
-          <main className="p-5 sm:p-6 lg:p-8 max-w-[1440px]"><ErrorBoundary>{children}</ErrorBoundary></main>
+          <main className="w-full p-5 sm:p-6 lg:p-8">
+            <div className="mx-auto w-full max-w-[1800px]">
+              <ErrorBoundary>{children}</ErrorBoundary>
+            </div>
+          </main>
         </div>
       </div>
     </ToastProvider>

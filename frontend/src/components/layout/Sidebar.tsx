@@ -5,16 +5,18 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, Users, Clock, CalendarDays, Wallet, Receipt,
-  Briefcase, UserPlus, FileText, BarChart3, Settings, LogOut, Building2, GitBranch, Bell, ClipboardList, Search,
+  Briefcase, UserPlus, FileText, BarChart3, Settings, LogOut, Building2, GitBranch, Bell, ClipboardList, Search, Calendar, UserCircle,
 } from 'lucide-react';
 
 const nav = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { label: 'Self Service', href: '/self-service', icon: UserCircle },
   { label: 'Employees', href: '/employees', icon: Users },
   { label: 'Directory', href: '/directory', icon: Search },
   { label: 'Departments', href: '/departments', icon: Building2 },
   { label: 'Org Chart', href: '/org-chart', icon: GitBranch },
   { label: 'Attendance', href: '/attendance', icon: Clock },
+  { label: 'Calendar', href: '/calendar', icon: Calendar },
   { label: 'Leave', href: '/leave', icon: CalendarDays },
   { label: 'Payroll', href: '/payroll', icon: Wallet },
   { label: 'Expenses', href: '/expenses', icon: Receipt },

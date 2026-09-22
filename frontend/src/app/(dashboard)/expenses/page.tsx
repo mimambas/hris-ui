@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import {
-  Receipt, Wallet, Clock, CheckCircle2, Search, Plus, MoreHorizontal, X, Eye,
+  Receipt, Wallet, Clock, CheckCircle2, Search, Plus, MoreHorizontal, X, Eye, XCircle,
   AlertTriangle, FileText, CalendarDays, Filter, Upload,
 } from 'lucide-react';
 import ModuleHeader from '@/components/ui/ModuleHeader';
@@ -27,6 +27,37 @@ type ExpenseRecord = {
   submittedDate: string;
   reviewedBy?: string;
   reviewNote?: string;
+};
+
+type ExpenseApprovalStep = {
+  step: 'Manager' | 'Finance';
+  approver: string;
+  status: 'pending' | 'approved' | 'rejected';
+  date?: string;
+  reason?: string;
+};
+
+const getExpenseApprovalChain = (record: ExpenseRecord): ExpenseApprovalStep[] => {
+  const managerApproved = record.status === 'approved' || Boolean(record.reviewedBy);
+  const rejected = record.status === 'rejected';
+  const managerRejected = rejected && record.reviewedBy !== 'Finance';
+  const chain: ExpenseApprovalStep[] = [{
+    step: 'Manager',
+    approver: managerRejected ? record.reviewedBy || 'Manager' : record.status === 'pending' ? 'Manager' : record.reviewedBy || 'Manager',
+    status: managerRejected ? 'rejected' : managerApproved ? 'approved' : 'pending',
+    date: managerApproved || managerRejected ? record.submittedDate : undefined,
+    reason: managerRejected ? record.reviewNote : undefined,
+  }];
+  if (record.amount >= 1000000) {
+    chain.push({
+      step: 'Finance',
+      approver: rejected && !managerRejected ? record.reviewedBy || 'Finance' : 'Finance',
+      status: rejected && !managerRejected ? 'rejected' : record.status === 'approved' ? 'approved' : managerApproved ? 'pending' : 'pending',
+      date: record.status === 'approved' || (rejected && !managerRejected) ? record.submittedDate : undefined,
+      reason: rejected && !managerRejected ? record.reviewNote : undefined,
+    });
+  }
+  return chain;
 };
 
 const statusMeta: Record<ExpenseStatus, { label: string; color: string }> = {
@@ -64,6 +95,15 @@ function ClaimDetailModal({ record, onClose, onApprove, onReject }: {
 }) {
   const [rejectNote, setRejectNote] = useState('');
   const [showReject, setShowReject] = useState(false);
+  const chain = getExpenseApprovalChain(record);
+  const pendingIndex = chain.findIndex((s) => s.status === 'pending');
+  const currentStep = pendingIndex >= 0 ? chain[pendingIndex] : undefined;
+
+  const stepStatusMeta: Record<string, { label: string; circle: string; line: string }> = {
+    approved: { label: 'Approved', circle: 'bg-cta text-white', line: 'bg-cta' },
+    pending: { label: 'Pending', circle: 'bg-amber-100 text-amber-600', line: 'bg-hairline' },
+    rejected: { label: 'Rejected', circle: 'bg-red-500 text-white', line: 'bg-red-300' },
+  };
 
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="claim-title">
@@ -126,27 +166,73 @@ function ClaimDetailModal({ record, onClose, onApprove, onReject }: {
           )}
         </div>
 
-        {record.reviewedBy && (
-          <div className="px-6 py-4 border-b border-hairline-soft">
-            <p className="text-[11px] uppercase tracking-wider text-muted font-semibold mb-2">Reviewed by</p>
-            <p className="text-sm text-ink">{record.reviewedBy}</p>
-            {record.reviewNote && <p className="text-xs text-muted mt-1">{record.reviewNote}</p>}
+        {/* Approval chain stepper */}
+        <div className="px-6 py-4 border-b border-hairline-soft">
+          <h3 className="text-[11px] uppercase tracking-wider text-muted font-semibold mb-3">Approval chain</h3>
+          <p className="text-[11px] text-muted-soft mb-3">
+            {record.amount >= 1000000 ? 'Claims >= Rp 1.000.000 require Manager and Finance approval' : 'Claims < Rp 1.000.000 require Manager approval only'}
+          </p>
+          <div className="space-y-0" role="list" aria-label="Expense approval steps">
+            {chain.map((step, i) => {
+              const sm = stepStatusMeta[step.status] || stepStatusMeta.pending;
+              const StepIcon = step.status === 'approved' ? CheckCircle2 : step.status === 'rejected' ? XCircle : Clock;
+              const isCurrentPending = i === pendingIndex;
+              return (
+                <div key={`${step.step}-${i}`} className="flex gap-3 pb-4 last:pb-0" role="listitem">
+                  <div className="flex flex-col items-center">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${sm.circle}`} aria-label={`${step.step}: ${sm.label}`}>
+                      <StepIcon size={15} />
+                    </div>
+                    {i < chain.length - 1 && <div className={`w-px flex-1 ${sm.line} mt-1`} />}
+                  </div>
+                  <div className="pt-1 flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-semibold text-ink">{step.step}</p>
+                      <span className={`badge capitalize ${step.status === 'approved' ? 'bg-cta-surface text-cta-hover' : step.status === 'rejected' ? 'bg-red-50 text-semantic-down' : 'bg-amber-50 text-accent-yellow'}`}>{step.status}</span>
+                    </div>
+                    <p className="text-xs text-muted mt-0.5">
+                      {step.status === 'pending' ? `Awaiting ${step.approver}` : `${step.approver}${step.date ? ` · ${step.date}` : ''}`}
+                    </p>
+                    {step.reason && <p className="text-xs text-body mt-1 bg-red-50 rounded-lg p-2">{step.reason}</p>}
+                    {isCurrentPending && showReject && (
+                      <div className="mt-3">
+                        <label className="block">
+                          <span className="text-sm font-semibold text-ink">Rejection reason <span className="text-semantic-down">*</span></span>
+                          <textarea
+                            value={rejectNote}
+                            onChange={(e) => setRejectNote(e.target.value)}
+                            placeholder="Reason for rejection..."
+                            className="input-field w-full mt-1.5"
+                            rows={2}
+                            aria-label="Rejection reason"
+                          />
+                          {rejectNote.length === 0 && <p className="text-[11px] text-muted mt-1">Reason is required</p>}
+                        </label>
+                        <div className="flex gap-2 mt-2">
+                          <button onClick={() => { setShowReject(false); setRejectNote(''); }} className="btn-secondary min-h-10 text-xs">Cancel</button>
+                          <button
+                            onClick={() => { if (rejectNote.trim()) { onReject(record.id, rejectNote.trim()); onClose(); } }}
+                            disabled={!rejectNote.trim()}
+                            className="min-h-10 px-4 rounded-pill bg-semantic-down text-white text-xs font-semibold hover:bg-red-600 transition-colors disabled:opacity-40"
+                            aria-label="Confirm rejection"
+                          >
+                            Confirm rejection
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {isCurrentPending && !showReject && (
+                      <div className="flex gap-2 mt-2">
+                        <button onClick={() => { onApprove(record.id); onClose(); }} className="min-h-10 px-4 rounded-pill bg-primary text-white text-xs font-semibold hover:bg-primary-hover transition-colors" aria-label={`Approve at ${step.step}`}>Approve</button>
+                        <button onClick={() => setShowReject(true)} className="min-h-10 px-4 rounded-pill bg-red-50 text-semantic-down text-xs font-semibold hover:bg-red-100 transition-colors" aria-label={`Reject at ${step.step}`}>Reject</button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        )}
-
-        {record.status === 'pending' && (
-          <div className="px-6 py-4 flex gap-3 justify-end">
-            <button onClick={() => setShowReject(!showReject)} className="btn-secondary text-sm gap-2 text-semantic-down border-semantic-down/30">Reject</button>
-            <button onClick={() => { onApprove(record.id); onClose(); }} className="btn-cta text-sm gap-2">Approve claim</button>
-          </div>
-        )}
-
-        {showReject && (
-          <div className="px-6 pb-4">
-            <textarea value={rejectNote} onChange={(e) => setRejectNote(e.target.value)} placeholder="Reason for rejection…" className="input-field w-full" rows={2} />
-            <button onClick={() => { onReject(record.id, rejectNote); onClose(); }} className="mt-2 min-h-10 px-4 rounded-pill bg-semantic-down text-white text-sm font-semibold hover:bg-red-600 transition-colors">Confirm rejection</button>
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );

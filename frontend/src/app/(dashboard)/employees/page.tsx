@@ -3,12 +3,13 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
-  Plus, Search, Download, MoreHorizontal, ChevronLeft, ChevronRight,
+  Plus, Search, Download, Upload, MoreHorizontal, ChevronLeft, ChevronRight,
   X, Mail, Phone, MapPin, Calendar, Briefcase, Eye, UserRound,
 } from 'lucide-react';
 import ModuleHeader from '@/components/ui/ModuleHeader';
 import EmptyState from '@/components/ui/EmptyState';
 import { useToast } from '@/components/ui/Toast';
+import { parseCsv, toCsv, type CsvRow } from '@/lib/csv';
 
 type Employee = {
   id: string;
@@ -50,7 +51,7 @@ const statusMeta: Record<string, { label: string; color: string }> = {
   probation: { label: 'Probation', color: 'bg-amber-50 text-accent-yellow' },
 };
 
-function EmployeeDetailModal({ emp, onClose }: { emp: Employee; onClose: () => void }) {
+const EmployeeDetailModal = ({ emp, onClose }: { emp: Employee; onClose: () => void }) => {
   const [copied, setCopied] = useState('');
   const copy = async (val: string, label: string) => { await navigator.clipboard?.writeText(val); setCopied(label); setTimeout(() => setCopied(''), 1500); };
   const st = statusMeta[emp.status];
@@ -121,9 +122,148 @@ function Copy({ size, className }: { size: number; className?: string }) {
   );
 }
 
+type ParsedImportRow = { row: CsvRow; index: number; valid: boolean; errors: string[] };
+
+const REQUIRED_FIELDS = ['name', 'department', 'position'] as const;
+const OPTIONAL_FIELDS = ['employeeid', 'email', 'phone', 'location', 'manager', 'status', 'joindate', 'salary', 'contractexpiry', 'leavebalance'] as const;
+const VALID_STATUSES = ['active', 'inactive', 'probation'];
+
+function initialsFromName(name: string): string {
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('');
+}
+
+const COLORS = [
+  'bg-primary-surface text-primary', 'bg-cta-surface text-cta-hover',
+  'bg-pink-50 text-pink-600', 'bg-amber-50 text-accent-yellow',
+  'bg-violet-50 text-violet-600', 'bg-emerald-50 text-emerald-600',
+  'bg-sky-50 text-sky-600', 'bg-rose-50 text-rose-600',
+];
+
+function validateRow(row: CsvRow, index: number): ParsedImportRow {
+  const errors: string[] = [];
+  for (const field of REQUIRED_FIELDS) {
+    if (!row[field]?.trim()) errors.push(`Missing required field: "${field}"`);
+  }
+  if (row.status && !VALID_STATUSES.includes(row.status.toLowerCase().trim())) {
+    errors.push(`Invalid status: "${row.status}". Must be active, inactive, or probation.`);
+  }
+  if (row.salary && isNaN(Number(row.salary.replace(/[^0-9.\-]/g, '')))) {
+    errors.push(`Invalid salary: "${row.salary}"`);
+  }
+  return { row, index, valid: errors.length === 0, errors };
+}
+
+function rowToEmployee(row: CsvRow, counter: number, color: string): Employee {
+  const name = row.name?.trim() ?? '';
+  const id = `imp-${Date.now()}-${counter}`;
+  const salary = Number((row.salary ?? '0').replace(/[^0-9.\-]/g, ''));
+  return {
+    id,
+    employeeId: row.employeeid?.trim() || `EMP-IMP-${String(counter).padStart(3, '0')}`,
+    name,
+    initials: initialsFromName(name),
+    department: row.department?.trim() ?? '',
+    position: row.position?.trim() ?? '',
+    status: (VALID_STATUSES.includes(row.status?.toLowerCase().trim()) ? row.status.toLowerCase().trim() : 'active') as Employee['status'],
+    joinDate: row.joindate?.trim() || new Date().toISOString().slice(0, 10),
+    email: row.email?.trim() || '',
+    phone: row.phone?.trim() || '',
+    location: row.location?.trim() || '',
+    manager: row.manager?.trim() || '',
+    salary: isNaN(salary) ? 0 : salary,
+    color,
+    contractExpiry: row.contractexpiry?.trim() || new Date().toISOString().slice(0, 10),
+    leaveBalance: Number(row.leavebalance) || 12,
+  };
+}
+
+function downloadBlob(content: string, filename: string, mime: string) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  URL.revokeObjectURL(url);
+}
+
 const PAGE_SIZE = 10;
 
+type ImportModalProps = { onClose: () => void; onConfirm: (employees: Employee[]) => void };
+type ExportScope = 'all' | 'filtered' | 'selected' | 'active' | 'probation';
+type ExportFieldSet = 'all' | 'basic' | 'contact' | 'payroll';
+type ExportModalProps = {
+  employeeCount: number;
+  filteredCount: number;
+  selectedCount: number;
+  activeCount: number;
+  probationCount: number;
+  onClose: () => void;
+  onExport: (scope: ExportScope, fieldSet: ExportFieldSet) => void;
+};
+
+function ModalShell({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+      <div className="absolute inset-0 bg-ink/40" onClick={onClose} />
+      <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-canvas border border-hairline shadow-2xl">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-hairline-soft">
+          <h2 className="text-base font-bold text-ink">{title}</h2>
+          <button onClick={onClose} aria-label={`Close ${title}`} className="btn-secondary min-h-10 min-w-10 px-3"><X size={15} /></button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function ImportModal({ onClose, onConfirm }: ImportModalProps) {
+  const [rows, setRows] = useState<ParsedImportRow[]>([]);
+  const [error, setError] = useState('');
+  const handleFile = async (file?: File) => {
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.csv')) { setError('Only CSV files are supported in this preview.'); return; }
+    const parsed = parseCsv(await file.text());
+    setRows(parsed.map((row, index) => validateRow(row, index + 2)));
+    setError(parsed.length === 0 ? 'The file has no data rows.' : '');
+  };
+  const validRows = rows.filter((item) => item.valid);
+  return (
+    <ModalShell title="Import employees" onClose={onClose}>
+      <div className="p-6 space-y-4">
+        <label className="block rounded-xl border-2 border-dashed border-hairline p-8 text-center hover:border-primary transition-colors cursor-pointer">
+          <Upload size={22} className="mx-auto text-primary mb-2" />
+          <span className="text-sm font-semibold text-ink">Choose a CSV file</span>
+          <span className="block text-xs text-muted mt-1">Required columns: name, department, position</span>
+          <input type="file" accept=".csv,text/csv" className="sr-only" onChange={(event) => handleFile(event.target.files?.[0])} />
+        </label>
+        {error && <p className="text-xs text-semantic-down">{error}</p>}
+        {rows.length > 0 && <div className="overflow-x-auto rounded-lg border border-hairline"><table className="w-full min-w-[560px] text-xs"><thead><tr className="bg-surface-soft"><th className="table-header">Row</th><th className="table-header">Name</th><th className="table-header">Department</th><th className="table-header">Status</th><th className="table-header">Validation</th></tr></thead><tbody>{rows.slice(0, 8).map((item) => <tr key={item.index} className="border-t border-hairline-soft"><td className="table-cell">{item.index}</td><td className="table-cell text-ink">{item.row.name || '—'}</td><td className="table-cell">{item.row.department || '—'}</td><td className="table-cell">{item.valid ? <span className="text-cta font-semibold">Valid</span> : <span className="text-semantic-down font-semibold">Error</span>}</td><td className="table-cell text-muted">{item.errors[0] || 'Ready to import'}</td></tr>)}</tbody></table></div>}
+        {rows.length > 8 && <p className="text-xs text-muted">Showing first 8 of {rows.length} rows.</p>}
+        <div className="flex items-center justify-between pt-2"><p className="text-xs text-muted">{validRows.length} valid of {rows.length} rows</p><div className="flex gap-2"><button onClick={onClose} className="btn-secondary text-sm">Cancel</button><button disabled={validRows.length === 0} onClick={() => { onConfirm(validRows.map((item, index) => rowToEmployee(item.row, index + 1, COLORS[index % COLORS.length]))); onClose(); }} className="btn-cta text-sm disabled:opacity-50">Import valid rows</button></div></div>
+      </div>
+    </ModalShell>
+  );
+}
+
+function ExportModal({ employeeCount, filteredCount, selectedCount, activeCount, probationCount, onClose, onExport }: ExportModalProps) {
+  const [scope, setScope] = useState<ExportScope>('all');
+  const [fieldSet, setFieldSet] = useState<'all' | 'basic' | 'contact' | 'payroll'>('all');
+  return (
+    <ModalShell title="Export employees" onClose={onClose}>
+      <div className="p-6 space-y-5">
+        <div><p className="text-xs font-semibold text-muted mb-2">Records</p><select value={scope} onChange={(event) => setScope(event.target.value as ExportScope)} className="input-field w-full"><option value="all">All employees ({employeeCount})</option><option value="filtered">Current filtered results ({filteredCount})</option><option value="selected" disabled={selectedCount === 0}>Selected employees ({selectedCount})</option><option value="active">Active employees ({activeCount})</option><option value="probation">Probation employees ({probationCount})</option></select></div>
+        <div><p className="text-xs font-semibold text-muted mb-2">Columns</p><select value={fieldSet} onChange={(event) => setFieldSet(event.target.value as ExportFieldSet)} className="input-field w-full"><option value="all">All employee fields</option><option value="basic">Basic information</option><option value="contact">Contact information</option><option value="payroll">Payroll summary</option></select></div>
+        <div className="flex justify-end gap-2"><button onClick={onClose} className="btn-secondary text-sm">Cancel</button><button onClick={() => onExport(scope, fieldSet)} className="btn-cta gap-2 text-sm"><Download size={14} /> Download CSV</button></div>
+      </div>
+    </ModalShell>
+  );
+}
+
 export default function EmployeesPage() {
+  const [employees, setEmployees] = useState<Employee[]>(allEmployees);
   const [search, setSearch] = useState('');
   const [deptFilter, setDeptFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -132,16 +272,17 @@ export default function EmployeesPage() {
   const [page, setPage] = useState(1);
   const [showExport, setShowExport] = useState(false);
   const [showBulkActions, setShowBulkActions] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const { toast } = useToast();
 
-  const departments = ['All', ...Array.from(new Set(allEmployees.map((e) => e.department)))];
+  const departments = ['All', ...Array.from(new Set(employees.map((e) => e.department)))];
 
   const filtered = useMemo(() =>
-    allEmployees
+    employees
       .filter((e) => `${e.name} ${e.employeeId} ${e.position}`.toLowerCase().includes(search.toLowerCase()))
       .filter((e) => deptFilter === 'All' || e.department === deptFilter)
       .filter((e) => statusFilter === 'all' || e.status === statusFilter),
-    [search, deptFilter, statusFilter],
+    [employees, search, deptFilter, statusFilter],
   );
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
@@ -151,8 +292,20 @@ export default function EmployeesPage() {
   const toggleAll = () => setSelected(allSelected ? paged.filter((e) => !selected.includes(e.id)).length === 0 ? [] : selected.filter((id) => !paged.some((e) => e.id === id)) : [...new Set([...selected, ...paged.map((e) => e.id)])]);
   const toggleOne = (id: string) => setSelected((cur) => cur.includes(id) ? cur.filter((i) => i !== id) : [...cur, id]);
 
-  const activeCount = allEmployees.filter((e) => e.status === 'active').length;
-  const probationCount = allEmployees.filter((e) => e.status === 'probation').length;
+  const activeCount = employees.filter((e) => e.status === 'active').length;
+  const probationCount = employees.filter((e) => e.status === 'probation').length;
+
+  const handleImportConfirm = (imported: Employee[]) => {
+    setEmployees((prev) => [...prev, ...imported]);
+    toast(`Imported ${imported.length} employee${imported.length !== 1 ? 's' : ''} successfully.`, 'success');
+  };
+
+  const exportColumns: Record<string, string[]> = {
+    all: ['employeeId', 'name', 'department', 'position', 'status', 'joinDate', 'email', 'phone', 'location', 'manager', 'salary', 'contractExpiry', 'leaveBalance'],
+    basic: ['employeeId', 'name', 'department', 'position'],
+    contact: ['name', 'email', 'phone', 'location'],
+    payroll: ['name', 'department', 'salary', 'status'],
+  };
 
   return (
     <div>
@@ -160,19 +313,24 @@ export default function EmployeesPage() {
         eyebrow="People management"
         title="Employees"
         description="Manage your organization's people and employment records"
-        action={<Link href="/employees/new" className="btn-cta gap-2 shrink-0"><Plus size={16} /> Add Employee</Link>}
+        action={
+          <div className="flex gap-2 shrink-0">
+            <button onClick={() => setShowImport(true)} className="btn-secondary gap-2 text-sm"><Upload size={15} /> Import</button>
+            <Link href="/employees/new" className="btn-cta gap-2 text-sm"><Plus size={15} /> Add Employee</Link>
+          </div>
+        }
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div className="card">
           <p className="text-xs text-muted font-semibold">Total employees</p>
-          <p className="mt-2 font-mono text-2xl font-bold text-ink">{allEmployees.length}</p>
+          <p className="mt-2 font-mono text-2xl font-bold text-ink">{employees.length}</p>
           <p className="text-xs text-cta mt-1">+3 this month</p>
         </div>
         <div className="card">
           <p className="text-xs text-muted font-semibold">Active</p>
           <p className="mt-2 font-mono text-2xl font-bold text-ink">{activeCount}</p>
-          <p className="text-xs text-muted mt-1">{((activeCount / allEmployees.length) * 100).toFixed(1)}% of workforce</p>
+          <p className="text-xs text-muted mt-1">{employees.length > 0 ? ((activeCount / employees.length) * 100).toFixed(1) : '0'}% of workforce</p>
         </div>
         <div className="card">
           <p className="text-xs text-muted font-semibold">On probation</p>
@@ -199,7 +357,7 @@ export default function EmployeesPage() {
             {(['all', 'active', 'probation', 'inactive'] as const).map((s) => (
               <button key={s} onClick={() => { setStatusFilter(s); setPage(1); }} className={`min-h-9 px-3 rounded-pill text-[11px] font-semibold whitespace-nowrap transition-colors ${statusFilter === s ? 'bg-primary text-white' : 'bg-surface-strong text-muted hover:text-ink'}`}>
                 {s === 'all' ? 'All' : statusMeta[s].label}
-                {s !== 'all' && <span className="ml-1 opacity-70">{allEmployees.filter((e) => e.status === s).length}</span>}
+                {s !== 'all' && <span className="ml-1 opacity-70">{employees.filter((e) => e.status === s).length}</span>}
               </button>
             ))}
           </div>
@@ -273,7 +431,7 @@ export default function EmployeesPage() {
         </div>
 
         <div className="px-5 sm:px-6 py-4 border-t border-hairline-soft flex items-center justify-between">
-          <p className="text-xs text-muted">Showing {paged.length} of {filtered.length} employees {filtered.length !== allEmployees.length && `(filtered from ${allEmployees.length})`}</p>
+          <p className="text-xs text-muted">Showing {paged.length} of {filtered.length} employees {filtered.length !== employees.length && `(filtered from ${employees.length})`}</p>
           <div className="flex items-center gap-1">
             <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="min-h-10 min-w-10 p-2.5 rounded-md hover:bg-primary-surface transition-colors cursor-pointer disabled:opacity-30" aria-label="Previous page"><ChevronLeft size={16} className="text-muted mx-auto" /></button>
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
@@ -286,45 +444,33 @@ export default function EmployeesPage() {
 
       {detailEmp && <EmployeeDetailModal emp={detailEmp} onClose={() => setDetailEmp(null)} />}
 
+      {showImport && (
+        <ImportModal onClose={() => setShowImport(false)} onConfirm={handleImportConfirm} />
+      )}
+
       {showExport && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" role="dialog" aria-modal="true">
-          <div className="absolute inset-0 bg-ink/40" onClick={() => setShowExport(false)} />
-          <div className="relative w-full max-w-md rounded-2xl bg-canvas border border-hairline shadow-2xl p-6">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-base font-bold text-ink">Export Employees</h2>
-              <button onClick={() => setShowExport(false)} aria-label="Close" className="btn-secondary min-h-10 min-w-10 px-3"><X size={15} /></button>
-            </div>
-            <div className="space-y-4">
-              <label className="block text-sm font-semibold text-ink">Scope
-                <select className="input-field mt-1.5 w-full">
-                  <option>{selected.length > 0 ? `Selected employees (${selected.length})` : 'All employees'}</option>
-                  <option>Filtered results ({filtered.length})</option>
-                  <option>Active only ({activeCount})</option>
-                  <option>On probation ({probationCount})</option>
-                </select>
-              </label>
-              <label className="block text-sm font-semibold text-ink">Fields
-                <select defaultValue="all" className="input-field mt-1.5 w-full">
-                  <option value="all">All fields</option>
-                  <option value="basic">Name, ID, Department, Position</option>
-                  <option value="contact">Name, Email, Phone, Location</option>
-                  <option value="payroll">Name, Department, Salary, Status</option>
-                </select>
-              </label>
-              <label className="block text-sm font-semibold text-ink">Format
-                <select defaultValue="csv" className="input-field mt-1.5 w-full">
-                  <option value="csv">CSV</option>
-                  <option value="xlsx">XLSX</option>
-                  <option value="pdf">PDF</option>
-                </select>
-              </label>
-            </div>
-            <div className="flex gap-3 justify-end mt-6 pt-4 border-t border-hairline-soft">
-              <button onClick={() => setShowExport(false)} className="btn-secondary text-sm">Cancel</button>
-              <button onClick={() => { setShowExport(false); toast(`Employee export started. The file will download shortly.`, 'success'); }} className="btn-cta text-sm gap-2"><Download size={14} /> Export</button>
-            </div>
-          </div>
-        </div>
+        <ExportModal
+          employeeCount={employees.length}
+          filteredCount={filtered.length}
+          selectedCount={selected.length}
+          activeCount={activeCount}
+          probationCount={probationCount}
+          onClose={() => setShowExport(false)}
+          onExport={(scope, fieldSet) => {
+            let rows: Employee[];
+            if (scope === 'selected' && selected.length > 0) rows = employees.filter((e) => selected.includes(e.id));
+            else if (scope === 'filtered') rows = filtered;
+            else if (scope === 'active') rows = employees.filter((e) => e.status === 'active');
+            else if (scope === 'probation') rows = employees.filter((e) => e.status === 'probation');
+            else rows = employees;
+
+            const columns = exportColumns[fieldSet] ?? exportColumns.all;
+            const csv = toCsv(rows, columns);
+            downloadBlob(csv, `employees-${scope}-${new Date().toISOString().slice(0, 10)}.csv`, 'text/csv;charset=utf-8');
+            toast(`Exported ${rows.length} employee${rows.length !== 1 ? 's' : ''} to CSV.`, 'success');
+            setShowExport(false);
+          }}
+        />
       )}
     </div>
   );
