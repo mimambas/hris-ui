@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import api from '@/lib/api';
 import {
   Receipt, Wallet, Clock, CheckCircle2, Search, Plus, MoreHorizontal, X, Eye, XCircle,
   AlertTriangle, FileText, CalendarDays, Filter, Upload,
@@ -15,6 +16,7 @@ type ExpenseStatus = 'pending' | 'approved' | 'rejected' | 'draft';
 
 type ExpenseRecord = {
   id: string;
+  backendId?: string;
   employee: string;
   initials: string;
   department: string;
@@ -70,18 +72,6 @@ const statusMeta: Record<ExpenseStatus, { label: string; color: string }> = {
 const categories = ['All', 'Travel & Transport', 'Client Entertainment', 'Software & Tools', 'Office Supplies', 'Meals & Entertainment', 'Training & Development'];
 const statuses: ExpenseStatus[] = ['pending', 'approved', 'rejected'];
 
-const mockExpenses: ExpenseRecord[] = [
-  { id: 'EXP-0261', employee: 'Andi Pratama', initials: 'AP', department: 'Finance', category: 'Client Entertainment', amount: 2450000, date: '22 Sep 2026', description: 'Client dinner with PT Sejahtera at Hotel Mulia', receiptAttached: true, status: 'pending', submittedDate: '22 Sep 2026' },
-  { id: 'EXP-0260', employee: 'Maya Anggraeni', initials: 'MA', department: 'Design', category: 'Travel & Transport', amount: 1875000, date: '21 Sep 2026', description: 'Grab to client office in BSD', receiptAttached: true, status: 'approved', submittedDate: '21 Sep 2026', reviewedBy: 'Rina Sari' },
-  { id: 'EXP-0259', employee: 'Budi Hartono', initials: 'BH', department: 'Engineering', category: 'Software & Tools', amount: 950000, date: '20 Sep 2026', description: 'Annual Figma subscription renewal', receiptAttached: true, status: 'approved', submittedDate: '20 Sep 2026', reviewedBy: 'Andi Pratama' },
-  { id: 'EXP-0258', employee: 'Rizky Prasetyo', initials: 'RP', department: 'Engineering', category: 'Travel & Transport', amount: 3200000, date: '19 Sep 2026', description: 'Flight to Surabaya for conference', receiptAttached: true, status: 'rejected', submittedDate: '19 Sep 2026', reviewedBy: 'Andi Pratama', reviewNote: 'Conference not approved for this quarter' },
-  { id: 'EXP-0257', employee: 'Sari Dewi', initials: 'SD', department: 'Marketing', category: 'Office Supplies', amount: 680000, date: '18 Sep 2026', description: 'Printer paper and toner for marketing dept', receiptAttached: false, status: 'pending', submittedDate: '18 Sep 2026' },
-  { id: 'EXP-0256', employee: 'Dimas Saputra', initials: 'DS', department: 'Engineering', category: 'Training & Development', amount: 4500000, date: '15 Sep 2026', description: 'AWS re:Invent virtual pass', receiptAttached: true, status: 'approved', submittedDate: '15 Sep 2026', reviewedBy: 'Budi Hartono' },
-  { id: 'EXP-0255', employee: 'Nadia Putri', initials: 'NP', department: 'Design', category: 'Software & Tools', amount: 750000, date: '14 Sep 2026', description: 'Notion team subscription', receiptAttached: true, status: 'approved', submittedDate: '14 Sep 2026', reviewedBy: 'Maya Anggraeni' },
-  { id: 'EXP-0254', employee: 'Fajar Nugroho', initials: 'FN', department: 'Engineering', category: 'Meals & Entertainment', amount: 1200000, date: '12 Sep 2026', description: 'Team lunch during sprint retrospective', receiptAttached: true, status: 'pending', submittedDate: '12 Sep 2026' },
-  { id: 'EXP-0253', employee: 'Yuni Kartika', initials: 'YK', department: 'Customer Success', category: 'Travel & Transport', amount: 890000, date: '10 Sep 2026', description: 'Grab to client meeting in Jakarta Selatan', receiptAttached: true, status: 'approved', submittedDate: '10 Sep 2026', reviewedBy: 'Rina Sari' },
-  { id: 'EXP-0252', employee: 'Arief Wibowo', initials: 'AW', department: 'Finance', category: 'Office Supplies', amount: 350000, date: '08 Sep 2026', description: 'Desk organizer and stationery', receiptAttached: false, status: 'rejected', submittedDate: '08 Sep 2026', reviewedBy: 'Andi Pratama', reviewNote: 'Receipt required for claims over Rp 200.000' },
-];
 
 function formatRupiah(n: number): string {
   return 'Rp ' + n.toLocaleString('id-ID');
@@ -254,13 +244,34 @@ function SubmitClaimModal({ onClose, onSubmit }: { onClose: () => void; onSubmit
 }
 
 export default function ExpensesPage() {
-  const [expenses, setExpenses] = useState(mockExpenses);
+
+  const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
   const [statusFilter, setStatusFilter] = useState<'all' | ExpenseStatus>('all');
   const [selectedClaim, setSelectedClaim] = useState<ExpenseRecord | null>(null);
   const [showSubmit, setShowSubmit] = useState(false);
   const { toast } = useToast();
+
+  const loadExpenses = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const response = await api.get('/expenses', { params: { per_page: 100 } });
+      setExpenses(response.data.items.map((item: any) => ({
+        id: item.claim_number, backendId: item.id, employee: item.employee, initials: item.initials, department: item.department,
+        category: item.category, amount: item.amount, date: new Date(`${item.date}T00:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+        description: item.description, receiptAttached: item.receipt_attached, status: item.status, submittedDate: new Date(item.submitted_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }), reviewedBy: item.reviewed_by ?? undefined, reviewNote: item.review_note ?? undefined,
+      })));
+    } catch (requestError: any) {
+      setError(requestError.response?.data?.detail || 'Could not load expense claims.');
+    } finally { setLoading(false); }
+  };
+
+  useEffect(() => { void loadExpenses(); }, []);
 
   const filtered = useMemo(() => expenses.filter((r) => {
     const matchSearch = r.employee.toLowerCase().includes(search.toLowerCase()) || r.id.toLowerCase().includes(search.toLowerCase());
@@ -274,12 +285,34 @@ export default function ExpensesPage() {
   const approvedAmount = filtered.filter((r) => r.status === 'approved').reduce((sum, r) => sum + r.amount, 0);
   const pendingCount = filtered.filter((r) => r.status === 'pending').length;
 
-  const approveClaim = (id: string) => { setExpenses((rows) => rows.map((r) => r.id === id ? { ...r, status: 'approved' as ExpenseStatus, reviewedBy: 'You' } : r)); toast('Expense claim approved.', 'success'); };
-  const rejectClaim = (id: string, note: string) => { setExpenses((rows) => rows.map((r) => r.id === id ? { ...r, status: 'rejected' as ExpenseStatus, reviewedBy: 'You', reviewNote: note } : r)); toast('Expense claim rejected.', 'success'); };
-  const submitClaim = (data: { category: string; amount: number; description: string; date: string }) => {
-    setExpenses((rows) => [{ id: `EXP-${String(rows.length + 262).padStart(4, '0')}`, employee: 'You', initials: 'YO', department: 'HR', category: data.category, amount: data.amount, date: new Date(`${data.date}T00:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }), description: data.description, receiptAttached: false, status: 'pending', submittedDate: '22 Sep 2026' }, ...rows]);
-    setShowSubmit(false);
-    toast('Expense claim submitted for review.', 'success');
+  const approveClaim = async (id: string) => {
+    const record = expenses.find((item) => item.id === id);
+    if (!record || saving) return;
+    setSaving(true);
+    try {
+      await api.post(`/expenses/${record.backendId}/approve`);
+      await loadExpenses();
+      toast('Expense claim approved.', 'success');
+    } catch (requestError: any) { toast(requestError.response?.data?.detail || 'Could not approve claim.', 'error'); } finally { setSaving(false); }
+  };
+  const rejectClaim = async (id: string, note: string) => {
+    const record = expenses.find((item) => item.id === id);
+    if (!record) return;
+    setSaving(true);
+    try {
+      await api.post(`/expenses/${record.backendId}/reject`, { reason: note });
+      await loadExpenses();
+      toast('Expense claim rejected.', 'success');
+    } catch (requestError: any) { toast(requestError.response?.data?.detail || 'Could not reject claim.', 'error'); } finally { setSaving(false); }
+  };
+  const submitClaim = async (data: { category: string; amount: number; description: string; date: string }) => {
+    setSaving(true);
+    try {
+      await api.post('/expenses', data);
+      setShowSubmit(false);
+      await loadExpenses();
+      toast('Expense claim submitted for review.', 'success');
+    } catch (requestError: any) { toast(requestError.response?.data?.detail || 'Could not submit claim.', 'error'); } finally { setSaving(false); }
   };
 
   return <div>
