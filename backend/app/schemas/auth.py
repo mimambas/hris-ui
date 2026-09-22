@@ -1,10 +1,11 @@
-from pydantic import BaseModel, EmailStr
 from datetime import datetime
+
+from pydantic import BaseModel, Field
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str
+    email: str = Field(..., min_length=3, max_length=200)
+    password: str = Field(..., min_length=1)
 
 
 class TokenResponse(BaseModel):

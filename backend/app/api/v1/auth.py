@@ -21,13 +21,13 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 
 @router.post("/login", response_model=TokenResponse)
 async def login(data: LoginRequest, db: Annotated[AsyncSession, Depends(get_db)]):
-    result = await db.execute(select(User).where(User.email == data.email))
+    result = await db.execute(select(User).where(User.email == data.email.strip().lower()))
     user = result.scalar_one_or_none()
     if not user or not verify_password(data.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account disabled")
-    user.last_login = datetime.now(timezone.utc)
+    user.last_login = datetime.now(timezone.utc).replace(tzinfo=None)
     await db.commit()
     access = create_access_token(data={"sub": str(user.id), "role": user.role})
     refresh = create_refresh_token(data={"sub": str(user.id)})
