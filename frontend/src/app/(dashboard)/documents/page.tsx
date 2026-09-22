@@ -8,11 +8,12 @@ import ModuleHeader from '@/components/ui/ModuleHeader';
 import StatCard from '@/components/ui/StatCard';
 import EmptyState from '@/components/ui/EmptyState';
 import { useToast } from '@/components/ui/Toast';
+import { useEscapeKey } from '@/components/ui/useEscapeKey';
 
 type Doc = {
   id: string; name: string; employee: string; type: string; size: string; uploaded: string;
   expiry: string; status: 'valid' | 'expiring' | 'expired'; uploadBy: string;
-};
+  reminderSent?: boolean; renewalRequested?: boolean;};
 
 const initialDocs: Doc[] = [
   { id: '1', name: 'Employment Agreement', employee: 'Rina Sari', type: 'Contract', size: '2.4 MB', uploaded: '22 Sep 2026', expiry: '15 Mar 2027', status: 'valid', uploadBy: 'Rina Sari' },
@@ -47,6 +48,7 @@ function downloadTextFile(filename: string, content: string, mime = 'text/plain;
 }
 
 function DocPreviewModal({ doc, onClose, onDownload }: { doc: Doc; onClose: () => void; onDownload: () => void }) {
+  useEscapeKey(onClose);
   const st = statusMeta[doc.status];
   const Icon = st.icon;
   return (
@@ -85,6 +87,7 @@ function DocPreviewModal({ doc, onClose, onDownload }: { doc: Doc; onClose: () =
 
 function RequestDocsModal({ onClose }: { onClose: () => void }) {
   const { toast } = useToast();
+  useEscapeKey(onClose);
   const [selectedEmps, setSelectedEmps] = useState<string[]>([]);
   const [docTypes, setDocTypes] = useState<string[]>([]);
   const [dueDate, setDueDate] = useState('');
@@ -152,8 +155,8 @@ function RequestDocsModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-function ExpiryAlertModal({ docs, onClose }: { docs: Doc[]; onClose: () => void }) {
-  const { toast } = useToast();
+function ExpiryAlertModal({ docs, onClose, onRemind, onRequestRenewal }: { docs: Doc[]; onClose: () => void; onRemind: (doc: Doc) => void; onRequestRenewal: (doc: Doc) => void }) {
+  useEscapeKey(onClose);
   const expiring = docs.filter((d) => d.status === 'expiring');
   const expired = docs.filter((d) => d.status === 'expired');
 
@@ -177,7 +180,13 @@ function ExpiryAlertModal({ docs, onClose }: { docs: Doc[]; onClose: () => void 
                       <p className="text-sm font-semibold text-ink">{d.name} — {d.employee}</p>
                       <p className="text-[11px] text-muted">Expires {d.expiry}</p>
                     </div>
-                    <button onClick={() => toast(`Reminder sent to ${d.employee}.`, 'success')} className="min-h-9 px-3 rounded-pill bg-amber-100 text-accent-yellow text-[11px] font-semibold hover:bg-amber-200 transition-colors">Remind</button>
+                    <button
+                      disabled={d.reminderSent}
+                      onClick={() => onRemind(d)}
+                      className={`min-h-9 px-3 rounded-pill text-[11px] font-semibold transition-colors ${d.reminderSent ? 'bg-amber-50 text-muted cursor-default' : 'bg-amber-100 text-accent-yellow hover:bg-amber-200'}`}
+                    >
+                      {d.reminderSent ? 'Reminder sent' : 'Remind'}
+                    </button>
                   </div>
                 ))}
               </div>
@@ -195,7 +204,13 @@ function ExpiryAlertModal({ docs, onClose }: { docs: Doc[]; onClose: () => void 
                       <p className="text-sm font-semibold text-ink">{d.name} — {d.employee}</p>
                       <p className="text-[11px] text-muted">Expired {d.expiry}</p>
                     </div>
-                    <button onClick={() => toast(`Renewal request sent to ${d.employee}.`, 'success')} className="min-h-9 px-3 rounded-pill bg-red-100 text-semantic-down text-[11px] font-semibold hover:bg-red-200 transition-colors">Request renewal</button>
+                    <button
+                      disabled={d.renewalRequested}
+                      onClick={() => onRequestRenewal(d)}
+                      className={`min-h-9 px-3 rounded-pill text-[11px] font-semibold transition-colors ${d.renewalRequested ? 'bg-red-50 text-muted cursor-default' : 'bg-red-100 text-semantic-down hover:bg-red-200'}`}
+                    >
+                      {d.renewalRequested ? 'Renewal sent' : 'Request renewal'}
+                    </button>
                   </div>
                 ))}
               </div>
@@ -212,6 +227,7 @@ function ExpiryAlertModal({ docs, onClose }: { docs: Doc[]; onClose: () => void 
 
 function PolicyTemplatesModal({ onClose }: { onClose: () => void }) {
   const { toast } = useToast();
+  useEscapeKey(onClose);
   const templates = [
     { name: 'Employment Agreement', desc: 'Standard employment contract template', category: 'Contract' },
     { name: 'Non-Disclosure Agreement', desc: 'Confidentiality agreement for employees', category: 'Legal' },
@@ -295,6 +311,16 @@ export default function DocumentsPage() {
     setDocs((prev) => prev.filter((d) => d.id !== doc.id));
     setActionDoc(null);
     toast(`${doc.name} (${doc.employee}) has been deleted.`, 'success');
+  };
+
+  const handleRemind = (doc: Doc) => {
+    setDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, reminderSent: true } : d));
+    toast(`Reminder sent to ${doc.employee}.`, 'success');
+  };
+
+  const handleRequestRenewal = (doc: Doc) => {
+    setDocs((prev) => prev.map((d) => d.id === doc.id ? { ...d, renewalRequested: true } : d));
+    toast(`Renewal request sent to ${doc.employee}.`, 'success');
   };
 
   const handleDownload = (doc: Doc) => {
@@ -416,7 +442,7 @@ export default function DocumentsPage() {
 
       {previewDoc && <DocPreviewModal doc={previewDoc} onClose={() => setPreviewDoc(null)} onDownload={() => handleDownload(previewDoc)} />}
       {showRequest && <RequestDocsModal onClose={() => setShowRequest(false)} />}
-      {showExpiry && <ExpiryAlertModal docs={docs} onClose={() => setShowExpiry(false)} />}
+      {showExpiry && <ExpiryAlertModal docs={docs} onClose={() => setShowExpiry(false)} onRemind={handleRemind} onRequestRenewal={handleRequestRenewal} />}
       {showTemplates && <PolicyTemplatesModal onClose={() => setShowTemplates(false)} />}
     </div>
   );

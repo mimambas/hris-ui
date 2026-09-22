@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Search, Bell, Menu, X, ArrowUpRight, Users, Wallet, CalendarDays, FileText, Settings, Clock, Sun, Moon } from 'lucide-react';
 import { useTheme } from '@/components/ui/ThemeProvider';
 import { useMobileMenu } from '@/components/ui/MobileMenuContext';
+import { useNotifications } from '@/components/ui/NotificationContext';
 
 type SearchItem = { label: string; description: string; href: string; icon: typeof Users; keywords: string };
 
@@ -65,6 +66,7 @@ export default function Topbar() {
   const closeSearch = () => { setSearchOpen(false); setQuery(''); };
   const { theme, toggleTheme } = useTheme();
   const { toggle: toggleMobile } = useMobileMenu();
+  const { unreadCount } = useNotifications();
 
   return (
     <header className="h-16 bg-canvas/95 backdrop-blur-sm border-b border-hairline flex items-center justify-between px-5 lg:px-8 sticky top-0 z-20">
@@ -76,7 +78,7 @@ export default function Topbar() {
         <button onClick={toggleTheme} className="relative min-h-11 min-w-11 p-2.5 rounded-full hover:bg-primary-surface transition-colors" aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
           {theme === 'dark' ? <Sun size={18} className="text-body" /> : <Moon size={18} className="text-body" />}
         </button>
-        <Link href="/notifications" className="relative min-h-11 min-w-11 p-2.5 rounded-full hover:bg-primary-surface transition-colors cursor-pointer flex items-center justify-center" aria-label="Notifications"><Bell size={18} className="text-body" /><span className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-canvas">3</span></Link><div className="flex items-center gap-3 pl-3 sm:pl-4 border-l border-hairline"><div className="w-9 h-9 rounded-full bg-primary-surface flex items-center justify-center"><span className="text-xs font-bold text-primary">AD</span></div><div className="hidden sm:block"><p className="text-sm font-semibold text-ink leading-none">Admin</p><p className="text-[11px] text-muted mt-1">Super Admin</p></div></div></div>
+        <Link href="/notifications" className="relative min-h-11 min-w-11 p-2.5 rounded-full hover:bg-primary-surface transition-colors cursor-pointer flex items-center justify-center" aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}><Bell size={18} className="text-body" />{unreadCount > 0 && <span className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-canvas">{unreadCount > 99 ? '99+' : unreadCount}</span>}</Link><div className="flex items-center gap-3 pl-3 sm:pl-4 border-l border-hairline"><div className="w-9 h-9 rounded-full bg-primary-surface flex items-center justify-center"><span className="text-xs font-bold text-primary">AD</span></div><div className="hidden sm:block"><p className="text-sm font-semibold text-ink leading-none">Admin</p><p className="text-[11px] text-muted mt-1">Super Admin</p></div></div></div>
       <CommandPalette open={searchOpen} query={query} onQueryChange={setQuery} onClose={closeSearch} />
     </header>
   );
