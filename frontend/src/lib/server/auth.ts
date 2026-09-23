@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { jwtVerify, type JWTPayload } from 'jose';
 
-export type AuthUser = { id: string; email: string; role: string; is_active: boolean };
+export type AuthUser = { id: string; email: string; role: string; is_active: boolean; employee_id: string | null };
 
 export function getSupabaseAdmin(): SupabaseClient {
   const url = process.env.SUPABASE_URL;
@@ -22,7 +22,7 @@ export async function requireUser(request: Request): Promise<AuthUser> {
   }
   if (payload.type !== 'access' || typeof payload.sub !== 'string') throw new Error('UNAUTHORIZED');
   const { data: user, error } = await getSupabaseAdmin()
-    .from('users').select('id,email,role,is_active').eq('id', payload.sub).maybeSingle();
+    .from('users').select('id,email,role,is_active,employee_id').eq('id', payload.sub).maybeSingle();
   if (error || !user?.is_active) throw new Error('UNAUTHORIZED');
   return user as AuthUser;
 }

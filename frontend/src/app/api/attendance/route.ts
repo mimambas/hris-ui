@@ -54,8 +54,11 @@ function validateBody(body: any) {
 
 export async function GET(request: Request) {
   try {
-    await requireUser(request);
+    const user = await requireUser(request);
+    const elevated = ['super_admin', 'hr_director', 'hr_manager', 'hr_officer'].includes(user.role);
     const { searchParams } = new URL(request.url);
+    const scopedEmployeeId = elevated ? searchParams.get('employee_id') : user.employee_id;
+    if (!elevated && !scopedEmployeeId) return NextResponse.json({ detail: 'Your user account is not linked to an employee record' }, { status: 422 });
     const date = searchParams.get('date');
     const from = searchParams.get('from');
     const to = searchParams.get('to');
@@ -66,6 +69,7 @@ export async function GET(request: Request) {
     const perPage = Math.min(100, Math.max(1, Number(searchParams.get('per_page') || 100)));
     const client = getSupabaseAdmin();
     let query = client.from('attendance_records').select('*, employees!inner(full_name, employee_id, department_id, departments(name))', { count: 'exact' });
+    if (scopedEmployeeId) query = query.eq('employee_id', scopedEmployeeId);
     if (date) query = query.eq('date', date);
     if (from) query = query.gte('date', from);
     if (to) query = query.lte('date', to);
@@ -86,8 +90,8 @@ export async function POST(request: Request) {
     const body = await request.json();
     const parsed = validateBody(body);
     if ('detail' in parsed) return NextResponse.json(parsed, { status: 422 });
-    const employeeId = String(body.employee_id ?? '').trim();
-    if (!employeeId) return NextResponse.json({ detail: 'Employee is required' }, { status: 422 });
+    const employeeId = ['super_admin', 'hr_director', 'hr_manager', 'hr_officer'].includes(user.role) ? String(body.employee_id ?? '').trim() : user.employee_id ?? '';
+    if (!employeeId) return NextResponse.json({ detail: 'Your user account is not linked to an employee record' }, { status: 422 });
     const client = getSupabaseAdmin();
     const { data: employee, error: employeeError } = await client.from('employees').select('id').eq('id', employeeId).eq('status', 'active').maybeSingle();
     if (employeeError) throw employeeError;

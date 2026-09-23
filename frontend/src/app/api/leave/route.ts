@@ -21,15 +21,19 @@ function daysBetween(start: string, end: string) {
 
 export async function GET(request: Request) {
   try {
-    await requireUser(request);
+    const user = await requireUser(request);
+    const elevated = ['super_admin', 'hr_director', 'hr_manager', 'hr_officer'].includes(user.role);
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
-    const employeeId = searchParams.get('employee_id');
     const year = searchParams.get('year');
+    const employeeId = searchParams.get('employee_id');
+    if (employeeId && !elevated && employeeId !== user.employee_id) return NextResponse.json({ detail: 'Employees can only access their own leave requests' }, { status: 403 });
+    const scopedEmployeeId = elevated ? employeeId : user.employee_id;
+    if (!elevated && !scopedEmployeeId) return NextResponse.json({ detail: 'Your user account is not linked to an employee record' }, { status: 422 });
     const client = getSupabaseAdmin();
     let query = client.from('leave_requests').select('*, employee:employee_id(full_name,email,departments(name))', { count: 'exact' });
     if (status && status !== 'all' && STATUSES.includes(status)) query = query.eq('status', status);
-    if (employeeId) query = query.eq('employee_id', employeeId);
+    if (scopedEmployeeId) query = query.eq('employee_id', scopedEmployeeId);
     if (year && /^\d{4}$/.test(year)) query = query.gte('start_date', `${year}-01-01`).lte('start_date', `${year}-12-31`);
     const { data, count, error } = await query.order('created_at', { ascending: false });
     if (error) throw error;
@@ -42,8 +46,9 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const user = await requireUser(request);
+    const elevated = ['super_admin', 'hr_director', 'hr_manager', 'hr_officer'].includes(user.role);
     const body = await request.json();
-    const employeeId = String(body.employee_id ?? '').trim();
+    const employeeId = elevated ? String(body.employee_id ?? '').trim() : user.employee_id ?? '';
     const leaveType = String(body.leave_type ?? '').trim().toLowerCase();
     const startDate = String(body.start_date ?? '').trim();
     const endDate = String(body.end_date ?? '').trim();

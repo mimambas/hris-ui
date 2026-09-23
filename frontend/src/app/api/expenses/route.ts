@@ -11,10 +11,13 @@ function normalize(row: any) {
 
 export async function GET(request: Request) {
   try {
-    await requireUser(request);
-    const { searchParams } = new URL(request.url); const search = searchParams.get('search')?.trim(); const category = searchParams.get('category'); const status = searchParams.get('status');
+    const user = await requireUser(request);
+    const elevated = ['super_admin', 'hr_director', 'hr_manager', 'hr_officer'].includes(user.role);
+    const { searchParams } = new URL(request.url);
+    const search = searchParams.get('search')?.trim(); const category = searchParams.get('category'); const status = searchParams.get('status');
     const page = Math.max(1, Number(searchParams.get('page') || 1)); const perPage = Math.min(100, Math.max(1, Number(searchParams.get('per_page') || 100)));
     const client = getSupabaseAdmin(); let query = client.from('expense_claims').select('*, employee:employee_id(full_name,departments(name)), reviewer:reviewed_by(email)', { count: 'exact' });
+    if (!elevated) { if (!user.employee_id) return NextResponse.json({ detail: 'Your user account is not linked to an employee record' }, { status: 422 }); query = query.eq('employee_id', user.employee_id); }
     if (search) query = query.or(`claim_number.ilike.%${search}%,description.ilike.%${search}%`);
     if (category && category !== 'All') query = query.eq('category', category);
     if (status && status !== 'all') query = query.eq('status', status);
@@ -27,7 +30,8 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const user = await requireUser(request); const body = await request.json();
-    const employeeId = String(body.employee_id ?? '').trim(); const category = String(body.category ?? '').trim(); const description = String(body.description ?? '').trim(); const date = String(body.date ?? '').trim(); const amount = Number(body.amount ?? 0);
+    const elevated = ['super_admin', 'hr_director', 'hr_manager', 'hr_officer'].includes(user.role);
+    const employeeId = elevated ? String(body.employee_id ?? '').trim() : user.employee_id ?? ''; const category = String(body.category ?? '').trim(); const description = String(body.description ?? '').trim(); const date = String(body.date ?? '').trim(); const amount = Number(body.amount ?? 0);
     if (!category || !CATEGORIES.includes(category) || !description || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(amount) || amount <= 0) return NextResponse.json({ detail: 'Category, positive amount, description, and valid date are required' }, { status: 422 });
     const client = getSupabaseAdmin();
     let resolvedEmployeeId = employeeId;

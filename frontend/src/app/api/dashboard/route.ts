@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
 import { apiError, getSupabaseAdmin, requireUser } from '@/lib/server/auth';
 
 const RANGES = ['This month', 'Last quarter', 'This year'] as const;

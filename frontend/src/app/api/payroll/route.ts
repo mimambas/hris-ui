@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
 import { apiError, getSupabaseAdmin, requireAdmin, requireUser } from '@/lib/server/auth';
 
 function normalizeEntry(row: any) {

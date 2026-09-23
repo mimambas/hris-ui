@@ -5,8 +5,14 @@ const normalize = (row: any) => ({ ...row, employee_name: row.employee?.full_nam
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
-    await requireUser(request);
-    const { data, error } = await getSupabaseAdmin().from('leave_requests').select('*, employee:employee_id(full_name,email,departments(name))').eq('id', params.id).maybeSingle();
+    const user = await requireUser(request);
+    const client = getSupabaseAdmin();
+    let query = client.from('leave_requests').select('*, employee:employee_id(full_name,email,departments(name))').eq('id', params.id);
+    if (!['super_admin', 'hr_director', 'hr_manager', 'hr_officer'].includes(user.role)) {
+      if (!user.employee_id) return NextResponse.json({ detail: 'Your user account is not linked to an employee record' }, { status: 422 });
+      query = query.eq('employee_id', user.employee_id);
+    }
+    const { data, error } = await query.maybeSingle();
     if (error) throw error;
     if (!data) return NextResponse.json({ detail: 'Leave request not found' }, { status: 404 });
     return NextResponse.json(normalize(data));
