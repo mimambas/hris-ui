@@ -4,6 +4,8 @@ interface User {
   id: string;
   email: string;
   role: string;
+  is_active: boolean;
+  employee_id: string | null;
 }
 
 interface AuthState {

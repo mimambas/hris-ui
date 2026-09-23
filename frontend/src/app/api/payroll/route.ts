@@ -12,7 +12,8 @@ function normalizeEntry(row: any) {
 
 export async function GET(request: Request) {
   try {
-    await requireUser(request);
+    const user = await requireUser(request);
+    requireAdmin(user);
     const { searchParams } = new URL(request.url);
     const periodId = searchParams.get('period_id');
     if (!periodId) return NextResponse.json({ detail: 'period_id is required' }, { status: 422 });

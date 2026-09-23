@@ -5,7 +5,8 @@ function normalizePeriod(row: any) { return { id: row.id, name: row.name, period
 
 export async function GET(request: Request) {
   try {
-    await requireUser(request);
+    const user = await requireUser(request);
+    requireAdmin(user);
     const { data, error } = await getSupabaseAdmin().from('payroll_periods').select('*').order('period_start', { ascending: false });
     if (error) throw error;
     return NextResponse.json({ items: (data ?? []).map(normalizePeriod) });

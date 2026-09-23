@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import api from '@/lib/api';
 import { Search, Download, Filter, ShieldCheck, UserPlus, FileText, Settings, LogIn, MoreHorizontal, X, ChevronDown, CalendarDays } from 'lucide-react';
 import ModuleHeader from '@/components/ui/ModuleHeader';
 import EmptyState from '@/components/ui/EmptyState';
@@ -257,16 +258,20 @@ export default function AuditLogPage() {
   const [actionFilter, setActionFilter] = useState('All actions');
   const [selected, setSelected] = useState<AuditEntry | null>(null);
   const [showExport, setShowExport] = useState(false);
+  const [entries, setEntries] = useState<AuditEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
-  const filtered = useMemo(() => auditEntries.filter((entry) => {
-    const matchesCategory = category === 'All activity' || entry.category === category;
+  useEffect(() => { let active = true; api.get('/audit-log', { params: { search, category } }).then((response) => { if (active) setEntries(response.data.items ?? []); }).catch(() => toast('Unable to load audit log.', 'error')).finally(() => { if (active) setLoading(false); }); return () => { active = false; }; }, [category]);
+
+  const uniqueActors = ['All actors', ...Array.from(new Set(entries.map((e) => e.actor)))];
+  const uniqueActions = ['All actions', ...Array.from(new Set(entries.map((e) => e.action)))];
+  const filtered = useMemo(() => entries.filter((entry) => {
     const matchesDate = inRange(entry.dateISO, dateRange);
     const matchesActor = actorFilter === 'All actors' || entry.actor === actorFilter;
     const matchesAction = actionFilter === 'All actions' || entry.action === actionFilter;
-    const haystack = `${entry.actor} ${entry.action} ${entry.target} ${entry.category}`.toLowerCase();
-    const matchesSearch = haystack.includes(search.toLowerCase());
-    return matchesCategory && matchesDate && matchesActor && matchesAction && matchesSearch;
-  }), [search, category, dateRange, actorFilter, actionFilter]);
+    return matchesDate && matchesActor && matchesAction;
+  }), [entries, dateRange, actorFilter, actionFilter]);
 
   return (
     <div>
@@ -301,7 +306,7 @@ export default function AuditLogPage() {
           <table className="w-full min-w-[850px]">
             <thead><tr className="border-b border-hairline"><th className="table-header">Activity</th><th className="table-header">Category</th><th className="table-header">Timestamp</th><th className="table-header">IP address</th><th className="table-header w-12"><span className="sr-only">Actions</span></th></tr></thead>
             <tbody>
-              {filtered.length === 0 ? <tr><td colSpan={5}><EmptyState title="No activity matches your filters" description="Try a different search term, category, or date range." /></td></tr> : filtered.map((entry) => {
+              {loading ? <tr><td colSpan={5}><div className="p-8 text-center text-sm text-muted">Loading audit log…</div></td></tr> : filtered.length === 0 ? <tr><td colSpan={5}><EmptyState title="No activity matches your filters" description="Try a different search term, category, or date range." /></td></tr> : filtered.map((entry) => {
                 const Icon = entry.icon;
                 return <tr key={entry.id} className="table-row cursor-pointer" onClick={() => setSelected(entry)}><td className="table-cell"><div className="flex items-center gap-3"><div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${entry.color}`}><Icon size={15} /></div><div className="min-w-0"><p className="text-sm font-semibold text-ink">{entry.action}</p><p className="text-xs text-muted mt-0.5 truncate">{entry.actor} · {entry.target}</p></div></div></td><td className="table-cell"><span className="badge bg-surface-strong text-muted">{entry.category}</span></td><td className="table-cell text-xs text-body whitespace-nowrap">{entry.time}</td><td className="table-cell text-xs font-mono text-muted">{entry.ip}</td><td className="table-cell"><button onClick={(e) => { e.stopPropagation(); setSelected(entry); }} aria-label={`Details for ${entry.action}`} className="min-h-10 min-w-10 rounded-md hover:bg-primary-surface"><MoreHorizontal size={16} className="mx-auto text-muted" /></button></td></tr>;
               })}
@@ -309,7 +314,7 @@ export default function AuditLogPage() {
           </table>
         </div>
         <div className="px-5 py-4 border-t border-hairline-soft flex items-center justify-between text-xs text-muted">
-          <span>Showing {filtered.length} of {auditEntries.length} recent events</span>
+          <span>Showing {filtered.length} of {entries.length} recent events</span>
           <span className="inline-flex items-center gap-1.5"><ShieldCheck size={13} className="text-cta" /> Logs retained for 7 years</span>
         </div>
       </div>
