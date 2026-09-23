@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import api from '@/lib/api';
 import { AlertCircle, CalendarDays, CheckCircle2, Clock, Download, Pencil, Wallet, X } from 'lucide-react';
 import ModuleHeader from '@/components/ui/ModuleHeader';
 import { useToast } from '@/components/ui/Toast';
@@ -90,12 +91,38 @@ export default function SelfServicePage() {
   const [showLeave, setShowLeave] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [clockedIn, setClockedIn] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [serverProfile, setServerProfile] = useState<any>(null);
+  const [serverPayslips, setServerPayslips] = useState<any[]>([]);
+  const [serverLeaves, setServerLeaves] = useState<any[]>([]);
+  const [serverAttendance, setServerAttendance] = useState<any[]>([]);
   const [leaveForm, setLeaveForm] = useState({ type: 'Annual', start: '', end: '', reason: '' });
   const [formError, setFormError] = useState('');
   const [profileForm, setProfileForm] = useState({
     phone: profile.phone, address: profile.address, emergency: profile.emergencyContact,
   });
   const { toast } = useToast();
+  const loadSelfService = async () => {
+    setLoading(true);
+    try {
+      const me = await api.get('/auth/me');
+      const employee = me.data.employee_id ? await api.get(`/employees/${me.data.employee_id}`) : null;
+      const [leaves, attendance, documents] = await Promise.all([
+        api.get('/leave', { params: { employee_id: me.data.employee_id, per_page: 100 } }),
+        api.get('/attendance', { params: { employee_id: me.data.employee_id, per_page: 100 } }),
+        api.get('/documents', { params: { per_page: 100 } }),
+      ]);
+      setServerProfile(employee?.data ?? null);
+      setServerLeaves(leaves.data.items ?? []);
+      setServerAttendance(attendance.data.items ?? []);
+      const open = (attendance.data.items ?? []).some((row: any) => row.check_in_time && !row.check_out_time);
+      setClockedIn(open);
+      setServerPayslips([]);
+      if (employee?.data) setProfileForm((current) => ({ ...current, phone: employee.data.phone ?? '', address: employee.data.address_domisili ?? employee.data.address_ktp ?? '', emergency: `${employee.data.emergency_contact_name ?? ''} ${employee.data.emergency_contact_phone ?? ''}`.trim() }));
+    } catch (error: any) { toast(error.response?.data?.detail || 'Unable to load your workspace.', 'error'); }
+    finally { setLoading(false); }
+  };
+  useEffect(() => { void loadSelfService(); }, []);
 
   const leaveDays = useMemo(() => {
     if (!leaveForm.start || !leaveForm.end) return 0;
@@ -103,26 +130,23 @@ export default function SelfServicePage() {
     return diff >= 0 ? Math.floor(diff / 86400000) + 1 : 0;
   }, [leaveForm.start, leaveForm.end]);
 
-  const submitLeave = () => {
+  const submitLeave = async () => {
     if (!leaveForm.start || !leaveForm.end || leaveDays < 1) {
       return setFormError('Choose a valid start and end date.');
     }
     if (!leaveForm.reason.trim()) return setFormError('Reason is required.');
     setFormError('');
-    setShowLeave(false);
-    setLeaveForm({ type: 'Annual', start: '', end: '', reason: '' });
-    toast('Leave request submitted for approval.', 'success');
+    try { await api.post('/leave', { leave_type: leaveForm.type.toLowerCase(), start_date: leaveForm.start, end_date: leaveForm.end, reason: leaveForm.reason }); setShowLeave(false); setLeaveForm({ type: 'Annual', start: '', end: '', reason: '' }); await loadSelfService(); toast('Leave request submitted for approval.', 'success'); } catch (error: any) { toast(error.response?.data?.detail || 'Unable to submit leave request.', 'error'); }
   };
 
-  const saveProfile = () => {
+  const saveProfile = async () => {
     if (!/^\+?[0-9\s-]{10,}$/.test(profileForm.phone)) {
       return toast('Enter a valid phone number.', 'error');
     }
     if (!profileForm.address.trim() || !profileForm.emergency.trim()) {
       return toast('Address and emergency contact are required.', 'error');
     }
-    setShowProfile(false);
-    toast('Profile updated successfully.', 'success');
+    try { if (!serverProfile?.id) throw new Error('Employee profile unavailable'); await api.put(`/employees/${serverProfile.id}`, { phone: profileForm.phone, address_domisili: profileForm.address, emergency_contact_name: profileForm.emergency.split(' - ')[0], emergency_contact_phone: profileForm.emergency.match(/\+?[0-9\s-]+/)?.[0]?.trim() ?? profileForm.emergency }); setShowProfile(false); await loadSelfService(); toast('Profile updated successfully.', 'success'); } catch (error: any) { toast(error.response?.data?.detail || error.message || 'Unable to update profile.', 'error'); }
   };
 
   return (
@@ -148,16 +172,18 @@ export default function SelfServicePage() {
         ))}
       </div>
 
-      {tab === 'Overview' && <Overview onTab={setTab} />}
+      {tab === 'Overview' && <Overview onTab={setTab} person={serverProfile} />}
       {tab === 'Payslips' && (
         <PayslipsTab
+          payslips={serverPayslips}
           onView={setPayslip}
           onDownload={(data) => { downloadPayslip(data); toast('Payslip download started.', 'success'); }}
         />
       )}
-      {tab === 'Leave' && <LeaveTab onRequest={() => setShowLeave(true)} />}
+      {tab === 'Leave' && <LeaveTab leaves={serverLeaves} onRequest={() => setShowLeave(true)} />}
       {tab === 'Attendance' && (
         <AttendanceTab
+          attendance={serverAttendance}
           clockedIn={clockedIn}
           onClock={() => {
             setClockedIn(!clockedIn);
@@ -165,7 +191,7 @@ export default function SelfServicePage() {
           }}
         />
       )}
-      {tab === 'Profile' && <ProfileTab onEdit={() => setShowProfile(true)} />}
+      {tab === 'Profile' && <ProfileTab onEdit={() => setShowProfile(true)} person={serverProfile} />}
 
       {payslip && (
         <PayslipModal
@@ -198,16 +224,18 @@ export default function SelfServicePage() {
 
 /* ─── Tab: Overview ─── */
 
-function Overview({ onTab }: { onTab: (t: Tab) => void }) {
+function Overview({ onTab, person }: { onTab: (t: Tab) => void; person?: any }) {
+  const name = person?.full_name ?? profile.name;
+  const initials = name.split(/\s+/).map((part: string) => part[0]).join('').slice(0, 2).toUpperCase();
   return (
     <div className="space-y-5">
       <div className="card bg-primary-surface border-primary/10 flex flex-col sm:flex-row sm:items-center gap-4">
         <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center shrink-0">
-          <span className="text-lg font-bold text-white">RS</span>
+          <span className="text-lg font-bold text-white">{initials}</span>
         </div>
         <div>
-          <p className="text-xs font-semibold text-primary">Good morning, Rina</p>
-          <h2 className="text-xl font-bold text-ink mt-1">Welcome back, Rina Sari</h2>
+          <p className="text-xs font-semibold text-primary">Good morning, {name.split(' ')[0]}</p>
+          <h2 className="text-xl font-bold text-ink mt-1">Welcome back, {name}</h2>
           <p className="text-sm text-body mt-1">Here is your personal HR workspace.</p>
         </div>
       </div>
@@ -264,7 +292,7 @@ function Overview({ onTab }: { onTab: (t: Tab) => void }) {
 
 /* ─── Tab: Payslips ─── */
 
-function PayslipsTab({ onView, onDownload }: { onView: (d: typeof payslips[number]) => void; onDownload: (d: typeof payslips[number]) => void }) {
+function PayslipsTab({ payslips: rows, onView, onDownload }: { payslips: typeof payslips; onView: (d: typeof payslips[number]) => void; onDownload: (d: typeof payslips[number]) => void }) {
   return (
     <div className="card">
       <div className="flex items-center gap-3 mb-5">
@@ -286,7 +314,7 @@ function PayslipsTab({ onView, onDownload }: { onView: (d: typeof payslips[numbe
             </tr>
           </thead>
           <tbody>
-            {payslips.map((row) => (
+            {rows.map((row) => (
               <tr key={row.month} className="table-row">
                 <td className="table-cell font-semibold text-ink">{row.month}</td>
                 <td className="table-cell text-body font-mono">{rupiah(row.gross)}</td>
@@ -312,7 +340,7 @@ function PayslipsTab({ onView, onDownload }: { onView: (d: typeof payslips[numbe
 
 /* ─── Tab: Leave ─── */
 
-function LeaveTab({ onRequest }: { onRequest: () => void }) {
+function LeaveTab({ leaves, onRequest }: { leaves: any[]; onRequest: () => void }) {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
@@ -347,14 +375,7 @@ function LeaveTab({ onRequest }: { onRequest: () => void }) {
               </tr>
             </thead>
             <tbody>
-              {leaveHistory.map((row) => (
-                <tr key={row.dates} className="table-row">
-                  <td className="table-cell font-semibold text-ink">{row.type}</td>
-                  <td className="table-cell text-body">{row.dates}</td>
-                  <td className="table-cell text-body">{row.days}</td>
-                  <td className="table-cell"><StatusBadge status={row.status} /></td>
-                </tr>
-              ))}
+              {leaves.length === 0 ? <tr><td colSpan={4} className="py-8 text-center text-sm text-muted">No leave requests yet.</td></tr> : leaves.map((row) => <tr key={row.id} className="table-row"><td className="table-cell font-semibold text-ink">{row.leave_type}</td><td className="table-cell text-body">{row.start_date} – {row.end_date}</td><td className="table-cell text-body">{row.total_days}</td><td className="table-cell"><StatusBadge status={row.status === 'approved' ? 'Approved' : row.status === 'rejected' ? 'Rejected' : 'Pending'} /></td></tr>)}
             </tbody>
           </table>
         </div>
@@ -365,7 +386,7 @@ function LeaveTab({ onRequest }: { onRequest: () => void }) {
 
 /* ─── Tab: Attendance ─── */
 
-function AttendanceTab({ clockedIn, onClock }: { clockedIn: boolean; onClock: () => void }) {
+function AttendanceTab({ attendance, clockedIn, onClock }: { attendance: any[]; clockedIn: boolean; onClock: () => void }) {
   return (
     <div className="space-y-5">
       <div className="card flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -391,19 +412,12 @@ function AttendanceTab({ clockedIn, onClock }: { clockedIn: boolean; onClock: ()
       <div className="card">
         <h2 className="text-sm font-bold text-ink mb-4">This week</h2>
         <div className="space-y-2">
-          {weeklyAttendance.map((row) => (
-            <div key={row.day} className="grid grid-cols-2 sm:grid-cols-5 gap-3 items-center rounded-lg border border-hairline-soft p-3">
-              <div>
-                <p className="text-sm font-semibold text-ink">{row.day}</p>
-                <p className="text-[11px] text-muted">{row.date}</p>
-              </div>
-              <span className="text-sm font-mono text-body">In {row.in}</span>
-              <span className="text-sm font-mono text-body">Out {row.out}</span>
-              <span className={`badge w-fit ${
-                row.status === 'Present' ? 'bg-cta-surface text-cta'
-                  : row.status === 'Late' ? 'bg-amber-50 text-accent-yellow'
-                    : 'bg-primary-surface text-primary'
-              }`}>{row.status}</span>
+          {attendance.length === 0 ? <p className="py-8 text-center text-sm text-muted">No attendance records yet.</p> : attendance.map((row: any) => (
+            <div key={row.id} className="grid grid-cols-2 sm:grid-cols-5 gap-3 items-center rounded-lg border border-hairline-soft p-3">
+              <div><p className="text-sm font-semibold text-ink">{row.date}</p><p className="text-[11px] text-muted">{row.status}</p></div>
+              <span className="text-sm font-mono text-body">In {row.check_in_time ?? '—'}</span>
+              <span className="text-sm font-mono text-body">Out {row.check_out_time ?? '—'}</span>
+              <span className="badge w-fit bg-cta-surface text-cta">{row.status}</span>
               <span className="text-sm font-mono text-muted hidden sm:block">{row.hours}</span>
             </div>
           ))}
@@ -415,15 +429,16 @@ function AttendanceTab({ clockedIn, onClock }: { clockedIn: boolean; onClock: ()
 
 /* ─── Tab: Profile ─── */
 
-function ProfileTab({ onEdit }: { onEdit: () => void }) {
+function ProfileTab({ onEdit, person }: { onEdit: () => void; person?: any }) {
+  const current = person ?? profile;
   const fields: [string, string][] = [
-    ['Full name', profile.name],
-    ['Employee ID', profile.employeeId],
-    ['Email', profile.email],
-    ['Phone', profile.phone],
-    ['Department', profile.department],
-    ['Position', profile.position],
-    ['NIK', profile.nik],
+    ['Full name', current.full_name ?? profile.name],
+    ['Employee ID', current.employee_id ?? profile.employeeId],
+    ['Email', current.email ?? profile.email],
+    ['Phone', current.phone ?? profile.phone],
+    ['Department', current.department ?? profile.department],
+    ['Position', current.position ?? profile.position],
+    ['NIK', current.nik ?? profile.nik],
     ['NPWP', profile.npwp],
     ['Address', profile.address],
     ['Emergency contact', profile.emergencyContact],
