@@ -25,10 +25,12 @@ export async function requireUser(request: Request): Promise<AuthUser> {
   const { data: user, error } = await client
     .from('users').select('id,email,role,is_active,employee_id,organization_id').eq('id', payload.sub).maybeSingle();
   if (error || !user?.is_active || !user.organization_id) throw new Error('UNAUTHORIZED');
-  const { data: membership, error: membershipError } = await client.from('organization_memberships').select('role:roles(role_key), role_permissions(permission:permissions(permission_key))').eq('organization_id', user.organization_id).eq('user_id', user.id).eq('status', 'active').maybeSingle();
+  const { data: membership, error: membershipError } = await client.from('organization_memberships').select('role_id, role:roles(role_key)').eq('organization_id', user.organization_id).eq('user_id', user.id).eq('status', 'active').maybeSingle();
   if (membershipError || !membership) throw new Error('UNAUTHORIZED');
+  const { data: grants, error: grantsError } = await client.from('role_permissions').select('permission:permissions(permission_key)').eq('role_id', membership.role_id);
+  if (grantsError) throw new Error('UNAUTHORIZED');
   const roleValue = Array.isArray(membership.role) ? membership.role[0]?.role_key : (membership.role as any)?.role_key;
-  const permissions = (membership.role_permissions ?? []).map((item: any) => { const permission = Array.isArray(item.permission) ? item.permission[0] : item.permission; return permission?.permission_key; }).filter(Boolean);
+  const permissions = (grants ?? []).map((item: any) => { const permission = Array.isArray(item.permission) ? item.permission[0] : item.permission; return permission?.permission_key; }).filter(Boolean);
   return { ...user, role: roleValue ?? user.role, permissions } as AuthUser;
 }
 
