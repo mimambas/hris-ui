@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!url || !key) throw new Error('Supabase environment variables are not configured');
     const { data, error } = await createClient(url, key, { auth: { persistSession: false } })
-      .from('users').select('id,email,role,is_active,employee_id,created_at').eq('id', payload.sub).maybeSingle();
+      .from('users').select('id,email,role,is_active,employee_id,organization_id,created_at').eq('id', payload.sub).maybeSingle();
     if (error || !data || !data.is_active) return NextResponse.json({ detail: 'User not found' }, { status: 401 });
     return NextResponse.json(data);
   } catch {

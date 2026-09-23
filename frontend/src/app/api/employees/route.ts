@@ -27,7 +27,8 @@ function normalizeEmployee(row: any) {
 
 export async function GET(request: Request) {
   try {
-    await requireUser(request);
+    const user = await requireUser(request);
+    const client = getSupabaseAdmin();
     const { searchParams } = new URL(request.url);
     const page = Math.max(1, Number(searchParams.get('page') || 1));
     const perPage = Math.min(100, Math.max(1, Number(searchParams.get('per_page') || PAGE_SIZE_DEFAULT)));
@@ -35,13 +36,12 @@ export async function GET(request: Request) {
     const status = searchParams.get('status');
     const departmentId = searchParams.get('department_id');
     const departmentName = searchParams.get('department');
-    const client = getSupabaseAdmin();
-    let query = client.from('employees').select('*, departments(name), positions(title)', { count: 'exact' });
+    let query = client.from('employees').select('*, departments(name), positions(title)', { count: 'exact' }).eq('organization_id', user.organization_id);
     if (search) query = query.or(`full_name.ilike.%${search}%,employee_id.ilike.%${search}%`);
     if (status && status !== 'all') query = query.eq('status', status);
     if (departmentId && departmentId !== 'all') query = query.eq('department_id', departmentId);
     if (departmentName && departmentName !== 'All') {
-      const { data: department, error: departmentError } = await client.from('departments').select('id').eq('name', departmentName).maybeSingle();
+      const { data: department, error: departmentError } = await client.from('departments').select('id').eq('organization_id', user.organization_id).eq('name', departmentName).maybeSingle();
       if (departmentError) throw departmentError;
       if (!department) return NextResponse.json({ items: [], total: 0, page, per_page: perPage, total_pages: 1 });
       query = query.eq('department_id', department.id);
@@ -70,6 +70,7 @@ export async function POST(request: Request) {
     const { data: latest } = await client.from('employees').select('employee_id').like('employee_id', `${prefix}%`).order('employee_id', { ascending: false }).limit(1).maybeSingle();
     const sequence = latest?.employee_id ? Number(latest.employee_id.slice(-3)) + 1 : 1;
     const record = {
+      organization_id: user.organization_id,
       employee_id: `${prefix}${String(sequence).padStart(3, '0')}`,
       full_name: fullName,
       nik: body.nik || null,
