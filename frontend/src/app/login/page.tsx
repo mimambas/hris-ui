@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { useAuthStore } from '@/lib/auth';
-import { Eye, EyeOff, Shield } from 'lucide-react';
+import { Eye, EyeOff, Shield, BookOpen, Moon, Sun, X } from 'lucide-react';
+import { useTheme } from '@/components/ui/ThemeProvider';
 
 const DEMO_USERS = [
   { role: 'Super Admin', email: 'admin@hris.local', password: 'Admin123!' },
@@ -37,6 +38,8 @@ export default function LoginPage() {
   };
 
   const router = useRouter();
+  const { theme, toggleTheme } = useTheme();
+  const [showGuide, setShowGuide] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,6 +90,11 @@ export default function LoginPage() {
               <span className="text-white text-sm font-bold">H</span>
             </div>
             <span className="text-lg font-bold text-ink tracking-tight">HRIS</span>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 mb-6">
+            <button type="button" onClick={() => setShowGuide(true)} className="min-h-10 px-3 rounded-lg border border-hairline text-xs font-semibold text-muted hover:text-ink hover:bg-surface-soft flex items-center gap-2"><BookOpen size={14} /> User guide</button>
+            <button type="button" onClick={toggleTheme} className="min-h-10 min-w-10 rounded-lg border border-hairline text-muted hover:text-ink hover:bg-surface-soft flex items-center justify-center" aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>{theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}</button>
           </div>
 
           <h2 className="text-2xl font-bold text-ink mb-1">Welcome back</h2>
@@ -164,6 +172,7 @@ export default function LoginPage() {
           <p className="text-[11px] text-muted-soft text-center mt-5 px-4 py-3 bg-surface-soft rounded-lg">
             Demo passwords are displayed for this public demo environment only.
           </p>
+          {showGuide && <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" role="dialog" aria-modal="true"><div className="absolute inset-0 bg-ink/40" onClick={() => setShowGuide(false)} /><div className="relative w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-2xl bg-canvas border border-hairline shadow-2xl p-6"><div className="flex items-start justify-between gap-4 mb-5"><div><h3 className="text-lg font-bold text-ink">HRIS Demo Guide</h3><p className="text-xs text-muted mt-1">Quick overview of roles and the main workflows.</p></div><button type="button" onClick={() => setShowGuide(false)} aria-label="Close guide" className="min-h-10 min-w-10 rounded-lg hover:bg-surface-soft flex items-center justify-center"><X size={16} className="text-muted" /></button></div><div className="grid gap-4 sm:grid-cols-2 text-sm"><div className="rounded-xl bg-surface-soft p-4"><h4 className="font-bold text-ink mb-2">Roles</h4><ul className="space-y-1.5 text-xs text-body"><li><b>Super Admin / HR:</b> administration, approvals, payroll, reports.</li><li><b>Employee:</b> own profile, attendance, leave, and documents.</li><li>Use the demo buttons to test each role.</li></ul></div><div className="rounded-xl bg-surface-soft p-4"><h4 className="font-bold text-ink mb-2">Main workflows</h4><ul className="space-y-1.5 text-xs text-body"><li>Employees and Departments: manage organization records.</li><li>Attendance and Leave: submit, review, and approve.</li><li>Expenses, Documents, Onboarding, Recruitment: create and track workflows.</li><li>Audit Log: review recorded administrative activity.</li></ul></div></div><p className="text-[11px] text-muted mt-5">This is a public demo. Payroll statutory calculations, SSO/MFA, integrations, and some analytics modules are not enterprise-ready yet.</p></div></div>}
         </div>
       </div>
     </div>
