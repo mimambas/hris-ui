@@ -6,6 +6,8 @@ interface User {
   role: string;
   is_active: boolean;
   employee_id: string | null;
+  full_name?: string | null;
+  organization_id?: string | null;
 }
 
 interface AuthState {
