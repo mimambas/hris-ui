@@ -6,6 +6,14 @@ import api from '@/lib/api';
 import { useAuthStore } from '@/lib/auth';
 import { Eye, EyeOff, Shield } from 'lucide-react';
 
+const DEMO_USERS = [
+  { role: 'Super Admin', email: 'admin@hris.local', password: 'Admin123!' },
+  { role: 'HR Director', email: 'director.demo@hris.local', password: 'HRDirector123!' },
+  { role: 'HR Manager', email: 'manager.demo@hris.local', password: 'HRManager123!' },
+  { role: 'HR Officer', email: 'officer.demo@hris.local', password: 'HROfficer123!' },
+  { role: 'Employee', email: 'employee.demo@hris.local', password: 'Employee123!' },
+];
+
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -13,6 +21,21 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const login = useAuthStore((s) => s.login);
+  const handleDemoLogin = async (demo: typeof DEMO_USERS[number]) => {
+    setEmail(demo.email);
+    setPassword(demo.password);
+    setError('');
+    setLoading(true);
+    try {
+      const res = await api.post('/auth/login', { email: demo.email, password: demo.password });
+      const meRes = await api.get('/auth/me', { headers: { Authorization: `Bearer ${res.data.access_token}` } });
+      login(meRes.data, res.data.access_token, res.data.refresh_token);
+      router.replace('/');
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Demo login failed.');
+    } finally { setLoading(false); }
+  };
+
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -123,8 +146,23 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <p className="text-[11px] text-muted-soft text-center mt-8 px-4 py-3 bg-surface-soft rounded-lg">
-            Demo: <span className="font-mono font-medium text-muted">admin@hris.local</span> / <span className="font-mono font-medium text-muted">Admin123!</span>
+          <div className="mt-6 rounded-xl border border-hairline bg-surface-soft p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div><p className="text-xs font-bold text-ink">Demo accounts</p><p className="text-[11px] text-muted mt-0.5">Choose a role to sign in instantly</p></div>
+              <span className="badge bg-amber-50 text-accent-yellow">Demo</span>
+            </div>
+            <div className="space-y-2">
+              {DEMO_USERS.map((demo) => (
+                <div key={demo.email} className="flex items-center gap-2 rounded-lg border border-hairline-soft bg-canvas px-3 py-2">
+                  <div className="flex-1 min-w-0"><p className="text-xs font-semibold text-ink">{demo.role}</p><p className="text-[10px] font-mono text-muted truncate">{demo.email}</p></div>
+                  <button type="button" onClick={() => void handleDemoLogin(demo)} disabled={loading} className="min-h-9 px-3 rounded-lg bg-primary text-white text-[11px] font-semibold hover:bg-primary-hover disabled:opacity-50">Login</button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <p className="text-[11px] text-muted-soft text-center mt-5 px-4 py-3 bg-surface-soft rounded-lg">
+            Demo passwords are displayed for this public demo environment only.
           </p>
         </div>
       </div>
