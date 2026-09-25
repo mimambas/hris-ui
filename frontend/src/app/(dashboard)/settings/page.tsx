@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import api from '@/lib/api';
 import { Building2, Clock, CalendarDays, Wallet, Bell, Shield, Save, RotateCcw } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
@@ -145,26 +146,42 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
 export default function SettingsPage() {
   const [activeSection, setActiveSection] = useState('company');
   const [data, setData] = useState<SettingsData>({ ...defaults });
+  const [savedData, setSavedData] = useState<SettingsData>({ ...defaults });
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showReset, setShowReset] = useState(false);
   const { toast } = useToast();
 
-  const dirty = useMemo(() => JSON.stringify(data) !== JSON.stringify(defaults), [data]);
+  const dirty = useMemo(() => JSON.stringify(data) !== JSON.stringify(savedData), [data, savedData]);
   const update = useCallback(<K extends keyof SettingsData>(key: K, value: SettingsData[K]) => {
     setData((prev) => ({ ...prev, [key]: value }));
   }, []);
 
+  useEffect(() => {
+    api.get('/settings').then((response) => {
+      const loaded = { ...defaults, ...(response.data.settings ?? {}) } as SettingsData;
+      setData(loaded);
+      setSavedData(loaded);
+    }).catch(() => toast('Unable to load organization settings.', 'error')).finally(() => setLoading(false));
+  }, []);
+
   const handleSave = async () => {
     setSaving(true);
-    await new Promise((resolve) => setTimeout(resolve, 700));
-    setSaving(false);
-    toast('Settings saved successfully.', 'success');
+    try {
+      const response = await api.patch('/settings', { settings: data });
+      const saved = { ...defaults, ...(response.data.settings ?? {}) } as SettingsData;
+      setData(saved);
+      setSavedData(saved);
+      toast('Settings saved successfully.', 'success');
+    } catch (error: any) {
+      toast(error.response?.data?.detail || 'Unable to save settings.', 'error');
+    } finally { setSaving(false); }
   };
 
   const handleReset = () => {
-    setData({ ...defaults });
+    setData(savedData);
     setShowReset(false);
-    toast('Settings reset to defaults.', 'success');
+    toast('Unsaved changes were reset.', 'success');
   };
 
   return (
@@ -186,7 +203,7 @@ export default function SettingsPage() {
           </nav>
         </div>
 
-        <div className="lg:col-span-3">
+        <div className="lg:col-span-3">{loading && <div className="mb-4 text-sm text-muted">Loading settings…</div>}
           {activeSection === 'company' && (
             <SettingsCard title="Company Profile" description="Basic information about your organization">
               <div className="space-y-0">
