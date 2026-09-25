@@ -25,6 +25,19 @@
     --surface-dark: #1e1b4b;
     --semantic-up: #10b981;
     --semantic-down: #ef4444;
+    --warning-surface: #fffbeb;
+    --warning-text: #b45309;
+    --danger-surface: #fef2f2;
+    --info-surface: #f0f9ff;
+    --info-text: #0284c7;
+    --violet-surface: #f5f3ff;
+    --violet-text: #7c3aed;
+    --pink-surface: #fdf2f8;
+    --pink-text: #db2777;
+    --sky-surface: #f0f9ff;
+    --sky-text: #0284c7;
+    --rose-surface: #fff1f2;
+    --rose-text: #e11d48;
   }
 
   [data-theme="dark"] {
@@ -47,6 +60,73 @@
     --surface-dark: #0f172a;
     --semantic-up: #34d399;
     --semantic-down: #f87171;
+    --warning-surface: #451a03;
+    --warning-text: #fbbf24;
+    --danger-surface: #450a0a;
+    --info-surface: #082f49;
+    --info-text: #7dd3fc;
+    --violet-surface: #2e1065;
+    --violet-text: #c4b5fd;
+    --pink-surface: #4a044e;
+    --pink-text: #f9a8d4;
+    --sky-surface: #082f49;
+    --sky-text: #7dd3fc;
+    --rose-surface: #4c0519;
+    --rose-text: #fda4af;
+  }
+
+  /* Ensure native controls (scrollbars, form controls, selection) follow the active
+     theme instead of defaulting to light. */
+  html {
+    color-scheme: light;
+  }
+
+  html[data-theme="dark"] {
+    color-scheme: dark;
+  }
+
+  /* Hardcoded light-palette utilities are remapped here so every surface that
+     uses bg-red-50 / bg-amber-50 / text-sky-600 etc. also darkens. */
+  [data-theme="dark"] {
+    .bg-red-50 { background-color: var(--danger-surface); }
+    .bg-red-100 { background-color: var(--danger-surface); }
+    .border-red-200 { border-color: var(--danger-surface); }
+    .border-red-300 { border-color: var(--danger-surface); }
+
+    .bg-amber-50 { background-color: var(--warning-surface); }
+    .bg-amber-100 { background-color: var(--warning-surface); }
+    .border-amber-200 { border-color: var(--warning-surface); }
+    .text-amber-600 { color: var(--warning-text); }
+    .text-amber-700 { color: var(--warning-text); }
+
+    .bg-violet-50 { background-color: var(--violet-surface); }
+    .text-violet-600 { color: var(--violet-text); }
+    .text-violet-700 { color: var(--violet-text); }
+
+    .bg-pink-50 { background-color: var(--pink-surface); }
+    .text-pink-600 { color: var(--pink-text); }
+
+    .bg-sky-50 { background-color: var(--sky-surface); }
+    .text-sky-600 { color: var(--sky-text); }
+
+    .bg-emerald-50 { background-color: var(--cta-surface); }
+    .text-emerald-600 { color: var(--cta); }
+
+    .bg-rose-50 { background-color: var(--rose-surface); }
+    .text-rose-600 { color: var(--rose-text); }
+
+    .bg-indigo-50 { background-color: var(--primary-surface); }
+    .text-indigo-600 { color: var(--primary); }
+
+    .bg-red-500 { background-color: #dc2626; }
+    .bg-red-600 { background-color: #b91c1c; }
+    .bg-violet-500 { background-color: #7c3aed; }
+    .bg-pink-500 { background-color: #db2777; }
+    .bg-sky-500 { background-color: #0284c7; }
+    .bg-white { background-color: var(--canvas); }
+    .text-white { color: var(--ink); }
+    .text-indigo-200 { color: var(--muted); }
+    .text-indigo-100 { color: var(--muted); }
   }
 
   * { box-sizing: border-box; }

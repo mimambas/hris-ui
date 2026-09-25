@@ -1,34 +1,68 @@
 'use client';
 
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 type Theme = 'light' | 'dark';
 
 type ThemeContextValue = {
   theme: Theme;
   toggleTheme: () => void;
+  setTheme: (theme: Theme) => void;
 };
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
+const STORAGE_KEY = 'hris-theme';
+
+function readStoredTheme(): Theme | null {
+  if (typeof window === 'undefined') return null;
+  const stored = window.localStorage.getItem(STORAGE_KEY);
+  if (stored === 'dark' || stored === 'light') return stored;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+/** Applies the theme synchronously so the DOM updates in the same tick as the toggle click. */
+function applyTheme(theme: Theme) {
+  const root = document.documentElement;
+  root.dataset.theme = theme;
+  root.style.colorScheme = theme;
+  window.localStorage.setItem(STORAGE_KEY, theme);
+}
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('light');
+  const [theme, setThemeState] = useState<Theme>('light');
 
+  // Read synchronously during the first client render so a returning dark-mode
+  // user does not flash light before effects run.
   useEffect(() => {
-    const stored = window.localStorage.getItem('hris-theme') as Theme | null;
-    const preferred = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    setTheme(stored === 'dark' || stored === 'light' ? stored : preferred);
+    const initial = readStoredTheme();
+    if (initial) {
+      setThemeState(initial);
+      applyTheme(initial);
+    }
   }, []);
 
+  // Keep the attribute and color-scheme in sync if another tab changes storage.
   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    window.localStorage.setItem('hris-theme', theme);
+    applyTheme(theme);
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== STORAGE_KEY) return;
+      const next = event.newValue as Theme | null;
+      if (next === 'dark' || next === 'light') setThemeState(next);
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
   }, [theme]);
+
+  const setTheme = useCallback((next: Theme) => {
+    setThemeState(next);
+    applyTheme(next);
+  }, []);
 
   const value = useMemo(() => ({
     theme,
-    toggleTheme: () => setTheme((current) => current === 'dark' ? 'light' : 'dark'),
-  }), [theme]);
+    setTheme,
+    toggleTheme: () => setTheme(theme === 'dark' ? 'light' : 'dark'),
+  }), [theme, setTheme]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
