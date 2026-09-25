@@ -8,7 +8,7 @@ Slice yang sudah diselesaikan dan memiliki smoke test: Organization Settings, Di
 
 Test suite: `npm run test:smoke` (17 assertions, production-backed) dan `backend/tests/test_health.py`.
 
-Sisa belom selesai: Reports, Calendar, Org Chart, Onboarding checklist standalone, document requests/templates, bulk email, offboarding, positions CRUD, bulk import, notification delivery, serta bagian dummy lainnya.
+Sisa belum selesai: Reports, Org Chart, Onboarding checklist standalone, document requests/templates, bulk email, offboarding, bulk import, notification delivery, serta bagian dummy lainnya.
 
 ## Ringkasan status
 
@@ -44,7 +44,7 @@ Fondasi sudah ditingkatkan: tenant/RBAC migration, ownership hardening, settings
 | Audit UI dead fixtures/KPI | frontend | partial | `audit-log/page.tsx` | Random mock fixtures and hardcoded KPI remain; API mapping/filter fixes needed |
 | Notification delivery | backend | missing | `notifications` API/table | No email/SMS/push, queue, retry, DLQ |
 | Offboarding | backend/frontend | missing | No route/table/page | PRD Module 9 not started |
-| Positions CRUD | backend/frontend | missing | Position model only | PRD Module 2.2 expects position management |
+| Positions CRUD | backend/frontend | done | `frontend/src/app/api/positions/*`, `frontend/src/app/(dashboard)/positions/page.tsx`, `supabase/migrations/20260925110000_positions_constraints.sql` | GET/POST/PUT/DELETE tenant-scoped, delete blocked for active employees, smoke test passes |
 | Bulk employee import | backend/frontend | missing | No route | PRD Module 1.2 |
 
 ## Remaining security and data-integrity gaps
@@ -73,7 +73,7 @@ Fondasi sudah ditingkatkan: tenant/RBAC migration, ownership hardening, settings
 6. Replace Directory/Org Chart/Calendar with API-backed views.
 7. Build Reports API/aggregation and real CSV export; add PDF/XLSX only after contract exists.
 8. Implement document requests and real templates/storage.
-9. Implement offboarding, positions, bulk import, notification delivery, and integrations.
+9. Implement offboarding, bulk import, notification delivery, and integrations.
 10. Add frontend E2E, backend integration, authorization, payroll golden cases, load tests, and CI.
 
 ## Done criteria
