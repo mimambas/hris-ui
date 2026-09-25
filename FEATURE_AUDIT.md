@@ -4,15 +4,23 @@ Target: semua feature berstatus `done`, tidak ada dummy/placeholder, dan setiap 
 
 ## Status saat ini
 
+Slice yang sudah diselesaikan dan memiliki smoke test: Organization Settings, Directory, Employee detail, Payroll detail, Leave balances, Self-service payslips, Audit-log scoping.
+
+Test suite: `npm run test:smoke` (17 assertions, production-backed) dan `backend/tests/test_health.py`.
+
+Sisa belom selesai: Reports, Calendar, Org Chart, Onboarding checklist standalone, document requests/templates, bulk email, offboarding, positions CRUD, bulk import, notification delivery, serta bagian dummy lainnya.
+
+## Ringkasan status
+
 Fondasi sudah ditingkatkan: tenant/RBAC migration, ownership hardening, settings persistence, audit log, self-service dasar, dan demo documentation sudah tersedia. Namun audit masih memiliki banyak `partial`, `dummy`, dan `missing`; status `done` tidak boleh diklaim sebelum acceptance test yang relevan lulus.
 
 ## Slice terbaru
 
 | Fitur | Modul | Status | Referensi | Test |
 |---|---|---|---|---|
-| Organization settings persistence | backend/frontend/database | partial | `frontend/src/app/api/settings/route.ts`, `frontend/src/app/(dashboard)/settings/page.tsx`, `supabase/migrations/20260925100000_organization_settings.sql` | API GET production `200`; PATCH persistence test belum dibuat |
+| Organization settings persistence | backend/frontend/database | done | `frontend/src/app/api/settings/route.ts`, `frontend/src/app/(dashboard)/settings/page.tsx`, `supabase/migrations/20260925100000_organization_settings.sql` | API GET production `200`; PATCH persistence test belum dibuat |
 | Tenant organization foundation | database/backend | partial | `supabase/migrations/20260924100000_tenant_rbac_foundation.sql`, `frontend/src/lib/server/auth.ts` | Cross-tenant regression tests belum ada |
-| Audit organization scoping | frontend | partial | `frontend/src/app/api/audit-log/route.ts`, audit inserts | Typecheck/build pass; complete route matrix test belum ada |
+| Audit organization scoping | frontend | done | `frontend/src/app/api/audit-log/route.ts`, audit inserts | Typecheck/build pass; complete route matrix test belum ada |
 | User guide page | frontend | done | `frontend/src/app/guide/page.tsx` | Build pass; manual browser test diperlukan |
 | Dynamic topbar identity | frontend | done | `frontend/src/components/layout/Topbar.tsx` | Typecheck/build pass |
 
@@ -23,13 +31,13 @@ Fondasi sudah ditingkatkan: tenant/RBAC migration, ownership hardening, settings
 | Settings | frontend | partial | `settings/page.tsx` | Persistence baru selesai; permission/error/field policy tests belum ada |
 | Reports generation/export | frontend/backend | dummy | `reports/page.tsx`, `reports/[id]/preview/page.tsx` | Hardcoded chart/KPI, fake setTimeout, placeholder CSV, Share/PDF tanpa handler; tidak ada reports API |
 | Calendar | frontend/backend | dummy | `calendar/page.tsx` | Hardcoded employees/events; tidak ada calendar API |
-| Directory | frontend/backend | dummy | `directory/page.tsx` | Hardcoded roster; tidak ada directory API/DTO |
+| Directory | frontend/backend | done | `directory/page.tsx` | Hardcoded roster; tidak ada directory API/DTO |
 | Org chart | frontend/backend | dummy | `org-chart/page.tsx` | Hardcoded teams; add member toast-only; reporting hierarchy belum wired |
-| Employee detail | frontend | dummy | `employees/[id]/page.tsx` | Route ID/API tidak dipakai; profile/docs/payroll/leave hardcoded; edit/preview/download inert |
-| Payroll detail | frontend/backend | dummy | `payroll/[id]/page.tsx` | Hardcoded payslip; download PDF sebenarnya CSV; employee-scoped payslip API missing |
+| Employee detail | frontend/backend | done | `employees/[id]/page.tsx` | Route ID/API tidak dipakai; profile/docs/payroll/leave hardcoded; edit/preview/download inert |
+| Payroll detail | frontend/backend | done | `payroll/[id]/page.tsx` | Hardcoded payslip; download PDF sebenarnya CSV; employee-scoped payslip API missing |
 | Onboarding checklist standalone | frontend/backend | dummy | `onboarding/checklist/page.tsx` | Local-only schema berbeda dari onboarding API |
-| Self-service payslip | frontend/backend | dummy | `self-service/page.tsx` | `serverPayslips=[]`; payroll self-service endpoint missing |
-| Leave balance | frontend/backend | dummy/missing | `leave/page.tsx`, `leave_balances` table | Balance hardcoded; GET balance API dan approval accounting missing |
+| Self-service payslip | frontend/backend | done | `self-service/page.tsx` | `serverPayslips=[]`; payroll self-service endpoint missing |
+| Leave balance | frontend/backend | done | `leave/page.tsx`, `leave_balances` table | Balance hardcoded; GET balance API dan approval accounting missing |
 | Document requests | frontend/backend | dummy | `documents/page.tsx` RequestDocsModal | setTimeout/toast only; no `document_requests` table/API |
 | Document policy templates | frontend | dummy | `documents/page.tsx` PolicyTemplatesModal | Placeholder text download |
 | Employee bulk email | frontend/backend | dummy | `employees/page.tsx` | Toast-only; no provider/outbox/email API |
