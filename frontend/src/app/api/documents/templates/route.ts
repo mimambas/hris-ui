@@ -1,0 +1,15 @@
+import { NextResponse } from 'next/server';
+import { apiError, requireAdmin, requireUser } from '@/lib/server/auth';
+
+const templates = [
+  { id: 'employment-agreement', name: 'Employment Agreement', description: 'Standard employment contract template', category: 'Contract', content: 'EMPLOYMENT AGREEMENT\n\nEmployer: ____________________\nEmployee: ____________________\nPosition: ____________________\nStart date: ____________________\nEmployment type: ____________________\nCompensation: ____________________\nWorking hours: ____________________\nBenefits: ____________________\nTermination and notice: ____________________\n\nSignatures\nEmployer: ____________________ Date: __________\nEmployee: ____________________ Date: __________' },
+  { id: 'nda', name: 'Non-Disclosure Agreement', description: 'Confidentiality agreement for employees', category: 'Legal', content: 'NON-DISCLOSURE AGREEMENT\n\nDisclosing party: ____________________\nReceiving party: ____________________\nEffective date: ____________________\n\nConfidential information includes business, customer, product, financial, and personnel information. The receiving party must protect confidential information and use it only for authorized work.\n\nSignatures\nDisclosing party: ____________________ Date: __________\nReceiving party: ____________________ Date: __________' },
+  { id: 'offer-letter', name: 'Offer Letter', description: 'Job offer letter template', category: 'Contract', content: 'OFFER LETTER\n\nCandidate: ____________________\nPosition: ____________________\nDepartment: ____________________\nProposed start date: ____________________\nSalary: ____________________\nWorking location: ____________________\nReporting manager: ____________________\nOffer expiry: ____________________\n\nCandidate acceptance signature: ____________________ Date: __________' },
+  { id: 'bpjs-enrollment', name: 'BPJS Enrollment Form', description: 'BPJS Kesehatan & Ketenagakerjaan enrollment', category: 'Benefits', content: 'BPJS ENROLLMENT FORM\n\nEmployee name: ____________________\nEmployee ID: ____________________\nNIK: ____________________\nBPJS Kesehatan number: ____________________\nBPJS Ketenagakerjaan number: ____________________\nEffective date: ____________________\n\nHR verification: ____________________ Date: __________' },
+  { id: 'leave-request', name: 'Leave Request Form', description: 'Standard leave application form', category: 'HR', content: 'LEAVE REQUEST FORM\n\nEmployee: ____________________\nLeave type: ____________________\nStart date: ____________________\nEnd date: ____________________\nTotal working days: ____________________\nReason: ____________________\n\nManager decision: Approved / Rejected\nDecision notes: ____________________\nManager signature: ____________________ Date: __________' },
+];
+
+export async function GET(request: Request) {
+  try { const user = await requireUser(request); requireAdmin(user); return NextResponse.json({ items: templates }); }
+  catch (error) { return apiError(error); }
+}

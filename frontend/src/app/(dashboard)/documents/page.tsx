@@ -228,14 +228,8 @@ function ExpiryAlertModal({ docs, onClose, onRemind, onRequestRenewal }: { docs:
 function PolicyTemplatesModal({ onClose }: { onClose: () => void }) {
   const { toast } = useToast();
   useEscapeKey(onClose);
-  const templates = [
-    { name: 'Employment Agreement', desc: 'Standard employment contract template', category: 'Contract' },
-    { name: 'Non-Disclosure Agreement', desc: 'Confidentiality agreement for employees', category: 'Legal' },
-    { name: 'Offer Letter', desc: 'Job offer letter template', category: 'Contract' },
-    { name: 'Internship Agreement', desc: 'Internship program agreement', category: 'Contract' },
-    { name: 'BPJS Enrollment Form', desc: 'BPJS Kesehatan & Ketenagakerjaan enrollment', category: 'Benefits' },
-    { name: 'Leave Request Form', desc: 'Standard leave application form', category: 'HR' },
-  ];
+  const [templates, setTemplates] = useState<{ id: string; name: string; description: string; category: string; content: string }[]>([]);
+  useEffect(() => { api.get('/documents/templates').then((response) => setTemplates(response.data.items ?? [])).catch(() => toast('Unable to load templates.', 'error')); }, [toast]);
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-ink/40" onClick={onClose} />
@@ -250,11 +244,11 @@ function PolicyTemplatesModal({ onClose }: { onClose: () => void }) {
               <div className="w-9 h-9 rounded-lg bg-primary-surface flex items-center justify-center shrink-0"><FileText size={15} className="text-primary" /></div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-ink">{t.name}</p>
-                <p className="text-[11px] text-muted">{t.desc}</p>
+                <p className="text-[11px] text-muted">{t.description}</p>
               </div>
               <div className="flex items-center gap-2">
                 <span className="badge bg-surface-strong text-muted text-[10px]">{t.category}</span>
-                <button onClick={() => { downloadTextFile(`${t.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-template.txt`, `${t.name}\n\n${t.desc}\n\nHRIS policy template placeholder.`, 'text/plain;charset=utf-8'); toast(`${t.name} downloaded.`, 'success'); }} className="min-h-9 min-w-9 rounded-lg hover:bg-primary-surface flex items-center justify-center" aria-label={`Download ${t.name}`}><Download size={14} className="text-muted" /></button>
+                <button onClick={() => { downloadTextFile(`${t.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-template.txt`, `${t.name}\n\n${t.description}\n\nHRIS policy template placeholder.`, 'text/plain;charset=utf-8'); toast(`${t.name} downloaded.`, 'success'); }} className="min-h-9 min-w-9 rounded-lg hover:bg-primary-surface flex items-center justify-center" aria-label={`Download ${t.name}`}><Download size={14} className="text-muted" /></button>
               </div>
             </div>
           ))}
