@@ -14,7 +14,7 @@ import { useToast } from '@/components/ui/Toast';
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-type TeamMember = { name: string; role: string };
+type TeamMember = { name: string; role: string; reportsTo?: string | null };
 
 type Team = {
   name: string;
@@ -72,7 +72,7 @@ export default function OrgChartPage() {
     }
     return Array.from(groups.entries()).map(([department, members], index) => {
       const lead = members.find((member) => !member.reporting_to) ?? members[0];
-      return { name: department, lead: lead?.full_name ?? 'Unassigned', initials: (lead?.full_name ?? 'U').split(/\s+/).map((part: string) => part[0]).join('').slice(0, 2).toUpperCase(), count: members.length, color: ['bg-primary-surface text-primary', 'bg-cta-surface text-cta-hover', 'bg-violet-50 text-violet-600', 'bg-amber-50 text-accent-yellow'][index % 4], department, description: `${department} organization`, members: members.map((member) => ({ name: member.full_name, role: member.position ?? '—' })) };
+      return { name: department, lead: lead?.full_name ?? 'Unassigned', initials: (lead?.full_name ?? 'U').split(/\s+/).map((part: string) => part[0]).join('').slice(0, 2).toUpperCase(), count: members.length, color: ['bg-primary-surface text-primary', 'bg-cta-surface text-cta-hover', 'bg-violet-50 text-violet-600', 'bg-amber-50 text-accent-yellow'][index % 4], department, description: `${department} organization`, members: members.map((member) => ({ name: member.full_name, role: member.position ?? '—', reportsTo: member.reporting_to })) };
     });
   }, [serverEmployees]);
 

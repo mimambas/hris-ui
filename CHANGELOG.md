@@ -71,3 +71,9 @@
 - Added production smoke assertions for attendance create and duplicate rejection (409).
 - Fixed Org Chart add-member to persist via `POST /api/employees` with `reporting_to` and department id; start date field added.
 - Typecheck, lint, build, and smoke tests pass.
+
+### 2026-09-26 — Org chart hierarchy data
+
+- Org chart now exposes live employee reporting metadata and uses live member counts.
+- Added production smoke assertion that employee hierarchy DTOs include `reporting_to`.
+- Typecheck, lint, build, and smoke tests pass.

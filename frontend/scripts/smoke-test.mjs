@@ -103,6 +103,9 @@ if (employeesForAttendance.status === 200 && employeesForAttendance.data.items.l
   check('attendance duplicate rejected', duplicateClockIn.status === 409);
 }
 
+const orgChartEmployees = await call(adminToken, '/api/employees?per_page=100');
+check('org chart employee hierarchy fields', orgChartEmployees.status === 200 && orgChartEmployees.data.items.every((row) => Object.prototype.hasOwnProperty.call(row, 'reporting_to')));
+
 const positions = await call(adminToken, '/api/positions');
 check('positions list', positions.status === 200 && Array.isArray(positions.data?.items));
 const departmentsList = await call(adminToken, '/api/departments');
