@@ -31,7 +31,7 @@ export async function GET(request: Request) {
     const scopedEmployeeId = elevated ? employeeId : user.employee_id;
     if (!elevated && !scopedEmployeeId) return NextResponse.json({ detail: 'Your user account is not linked to an employee record' }, { status: 422 });
     const client = getSupabaseAdmin();
-    let query = client.from('leave_requests').select('*, employee:employee_id(full_name,email,departments(name))', { count: 'exact' });
+    let query = client.from('leave_requests').select('*, employee:employee_id(full_name,email,departments(name))', { count: 'exact' }).eq('organization_id', user.organization_id);
     if (status && status !== 'all' && STATUSES.includes(status)) query = query.eq('status', status);
     if (scopedEmployeeId) query = query.eq('employee_id', scopedEmployeeId);
     if (year && /^\d{4}$/.test(year)) query = query.gte('start_date', `${year}-01-01`).lte('start_date', `${year}-12-31`);
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     const { data: overlap, error: overlapError } = await client.from('leave_requests').select('id').eq('employee_id', employeeId).in('status', ['pending', 'approved']).lte('start_date', endDate).gte('end_date', startDate).limit(1);
     if (overlapError) throw overlapError;
     if (overlap?.length) return NextResponse.json({ detail: 'This leave overlaps an existing request' }, { status: 409 });
-    const { data, error } = await client.from('leave_requests').insert({ employee_id: employeeId, leave_type: leaveType, start_date: startDate, end_date: endDate, total_days: totalDays, reason, status: 'pending' }).select('*, employee:employee_id(full_name,email,departments(name))').single();
+    const { data, error } = await client.from('leave_requests').insert({ organization_id: user.organization_id, employee_id: employeeId, leave_type: leaveType, start_date: startDate, end_date: endDate, total_days: totalDays, reason, status: 'pending' }).select('*, employee:employee_id(full_name,email,departments(name))').single();
     if (error) throw error;
     return NextResponse.json(normalize(data), { status: 201 });
   } catch (error) {

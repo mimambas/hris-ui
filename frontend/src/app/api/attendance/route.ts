@@ -68,7 +68,7 @@ export async function GET(request: Request) {
     const page = Math.max(1, Number(searchParams.get('page') || 1));
     const perPage = Math.min(100, Math.max(1, Number(searchParams.get('per_page') || 100)));
     const client = getSupabaseAdmin();
-    let query = client.from('attendance_records').select('*, employees!inner(full_name, employee_id, department_id, departments(name))', { count: 'exact' });
+    let query = client.from('attendance_records').select('*, employees!inner(full_name, employee_id, department_id, departments(name))', { count: 'exact' }).eq('organization_id', user.organization_id);
     if (scopedEmployeeId) query = query.eq('employee_id', scopedEmployeeId);
     if (date) query = query.eq('date', date);
     if (from) query = query.gte('date', from);
@@ -99,7 +99,7 @@ export async function POST(request: Request) {
     if (body.source === 'manual') requireAdmin(user);
     const { data: duplicate } = await client.from('attendance_records').select('id').eq('employee_id', employeeId).eq('date', parsed.date).maybeSingle();
     if (duplicate) return NextResponse.json({ detail: 'Attendance already exists for this employee and date' }, { status: 409 });
-    const record = { employee_id: employeeId, date: parsed.date, check_in: parsed.checkIn, check_out: parsed.checkOut, status: parsed.status, late_minutes: parsed.lateMinutes, overtime_hours: parsed.overtime, source: body.source === 'manual' ? 'manual' : 'web', notes: String(body.notes ?? '').trim() || null };
+    const record = { organization_id: user.organization_id, employee_id: employeeId, date: parsed.date, check_in: parsed.checkIn, check_out: parsed.checkOut, status: parsed.status, late_minutes: parsed.lateMinutes, overtime_hours: parsed.overtime, source: body.source === 'manual' ? 'manual' : 'web', notes: String(body.notes ?? '').trim() || null };
     const { data, error } = await client.from('attendance_records').insert(record).select('*, employees!inner(full_name, employee_id, department_id, departments(name))').single();
     if (error) { if (error.code === '23505') return NextResponse.json({ detail: 'Attendance already exists for this employee and date' }, { status: 409 }); throw error; }
     return NextResponse.json(normalize(data), { status: 201 });

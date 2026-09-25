@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     if (employeeError) throw employeeError; if (!employee) return NextResponse.json({ detail: 'Active employee not found' }, { status: 404 });
     const { data: latest } = await client.from('expense_claims').select('claim_number').like('claim_number', 'EXP-%').order('created_at', { ascending: false }).limit(1).maybeSingle(); const sequence = Number(String(latest?.claim_number ?? '').match(/(\d+)$/)?.[1] ?? 0) + 1;
     const claimNumber = `EXP-${String(sequence).padStart(4, '0')}`;
-    const { data, error } = await client.from('expense_claims').insert({ claim_number: claimNumber, employee_id: resolvedEmployeeId, category, amount, expense_date: date, description, receipt_attached: Boolean(body.receipt_attached) }).select('*, employee:employee_id(full_name,departments(name)), reviewer:reviewed_by(email)').single();
+    const { data, error } = await client.from('expense_claims').insert({ organization_id: user.organization_id, claim_number: claimNumber, employee_id: resolvedEmployeeId, category, amount, expense_date: date, description, receipt_attached: Boolean(body.receipt_attached) }).select('*, employee:employee_id(full_name,departments(name)), reviewer:reviewed_by(email)').single();
     if (error) throw error;
     await client.from('audit_logs').insert({ user_id: user.id, entity_type: 'expense_claim', entity_id: data.id, action: 'create', new_value: JSON.stringify({ claim_number: claimNumber, amount }) });
     return NextResponse.json(normalize(data), { status: 201 });

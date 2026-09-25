@@ -18,7 +18,7 @@ export async function GET(request: Request) {
     const periodId = searchParams.get('period_id');
     if (!periodId) return NextResponse.json({ detail: 'period_id is required' }, { status: 422 });
     const client = getSupabaseAdmin();
-    let query = client.from('payroll_entries').select('*, employees!inner(full_name, bank_name, bank_account, departments(name), positions(title))').eq('period_id', periodId);
+    let query = client.from('payroll_entries').select('*, employees!inner(full_name, bank_name, bank_account, departments(name), positions(title))').eq('organization_id', user.organization_id).eq('period_id', periodId);
     const search = searchParams.get('search')?.trim();
     if (search) query = query.ilike('employees.full_name', `%${search}%`);
     const { data, error } = await query.order('created_at', { ascending: true });

@@ -7,8 +7,8 @@ function normalize(row: any) {
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
-    await requireUser(request);
-    const { data, error } = await getSupabaseAdmin().from('departments').select('*, parent:parent_id(name)').eq('id', params.id).maybeSingle();
+    const user = await requireUser(request);
+    const { data, error } = await getSupabaseAdmin().from('departments').select('*, parent:parent_id(name)').eq('organization_id', user.organization_id).eq('id', params.id).maybeSingle();
     if (error) throw error;
     if (!data) return NextResponse.json({ detail: 'Department not found' }, { status: 404 });
     return NextResponse.json(normalize(data));
@@ -26,7 +26,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     const update = Object.fromEntries(Object.entries(body).filter(([key]) => allowed.includes(key)));
     if (typeof update.name === 'string') update.name = update.name.trim();
     if (typeof update.code === 'string') update.code = update.code.trim().toUpperCase();
-    const { data, error } = await getSupabaseAdmin().from('departments').update(update).eq('id', params.id).select('*, parent:parent_id(name)').maybeSingle();
+    const { data, error } = await getSupabaseAdmin().from('departments').update(update).eq('id', params.id).eq('organization_id', user.organization_id).select('*, parent:parent_id(name)').maybeSingle();
     if (error) {
       if (error.code === '23505') return NextResponse.json({ detail: 'Department code already exists' }, { status: 409 });
       throw error;
@@ -43,10 +43,10 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     const user = await requireUser(request);
     requireAdmin(user);
     const client = getSupabaseAdmin();
-    const { count, error: countError } = await client.from('employees').select('id', { count: 'exact', head: true }).eq('department_id', params.id);
+    const { count, error: countError } = await client.from('employees').select('id', { count: 'exact', head: true }).eq('organization_id', user.organization_id).eq('department_id', params.id);
     if (countError) throw countError;
     if ((count ?? 0) > 0) return NextResponse.json({ detail: 'Cannot delete a department that still has employees' }, { status: 409 });
-    const { data, error } = await client.from('departments').delete().eq('id', params.id).select('id').maybeSingle();
+    const { data, error } = await client.from('departments').delete().eq('id', params.id).eq('organization_id', user.organization_id).select('id').maybeSingle();
     if (error) throw error;
     if (!data) return NextResponse.json({ detail: 'Department not found' }, { status: 404 });
     return new NextResponse(null, { status: 204 });

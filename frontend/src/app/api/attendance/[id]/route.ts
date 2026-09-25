@@ -29,7 +29,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
     const user = await requireUser(request);
     const isAdmin = ['super_admin', 'hr_director', 'hr_manager', 'hr_officer'].includes(user.role);
     const client = getSupabaseAdmin();
-    let query = client.from('attendance_records').select('*, employees!inner(full_name, employee_id, department_id, departments(name))').eq('id', params.id);
+    let query = client.from('attendance_records').select('*, employees!inner(full_name, employee_id, department_id, departments(name))').eq('organization_id', user.organization_id).eq('id', params.id);
     if (!isAdmin) {
       if (!user.employee_id) return NextResponse.json({ detail: 'Your user account is not linked to an employee record' }, { status: 422 });
       query = query.eq('employee_id', user.employee_id);

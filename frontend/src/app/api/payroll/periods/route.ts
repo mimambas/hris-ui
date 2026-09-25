@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const name = String(body.name ?? '').trim(); const start = String(body.period_start ?? ''); const end = String(body.period_end ?? '');
     if (!name || !start || !end) return NextResponse.json({ detail: 'Name, start date, and end date are required' }, { status: 422 });
-    const { data, error } = await getSupabaseAdmin().from('payroll_periods').insert({ name, period_start: start, period_end: end, status: 'draft' }).select('*').single();
+    const { data, error } = await getSupabaseAdmin().from('payroll_periods').insert({ organization_id: user.organization_id, name, period_start: start, period_end: end, status: 'draft' }).select('*').single();
     if (error) { if (error.code === '23505') return NextResponse.json({ detail: 'Payroll period already exists' }, { status: 409 }); throw error; }
     return NextResponse.json(normalizePeriod(data), { status: 201 });
   } catch (error) { return apiError(error); }
