@@ -73,6 +73,8 @@ export default function ReportsPage() {
   const [showExport, setShowExport] = useState(false);
   const [showAllReports, setShowAllReports] = useState(false);
   const [generations, setGenerations] = useState<any[]>([]);
+  const [exportFormat, setExportFormat] = useState('csv');
+  const [exportType, setExportType] = useState('headcount');
   const { toast } = useToast();
   const [reportData, setReportData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -85,13 +87,24 @@ export default function ReportsPage() {
   const liveLeave = (reportData?.leave_by_type ?? []).map((item: any, index: number) => ({ name: item.type, value: item.count, color: ['#6366F1', '#F59E0B', '#EC4899', '#10B981', '#0EA5E9'][index % 5] }));
 
 
-  const downloadReport = (name: string, format: string) => {
-    const rows = reportData?.rows ?? [];
+  const exportLiveReport = async () => {
+    try {
+      const response = await api.get('/reports', { params: { range, type: exportType } });
+      const title = reportTypes.find((item) => item.type === exportType)?.title ?? 'HRIS report';
+      downloadReport(title, exportFormat, response.data);
+      await api.post('/reports/generations', { name: title, report_type: exportType, format: exportFormat, range, row_count: response.data?.rows?.length ?? 0 });
+      await loadGenerations();
+      setShowExport(false);
+    } catch (error: any) { toast(error.response?.data?.detail || 'Unable to export report.', 'error'); }
+  };
+
+  const downloadReport = (name: string, format: string, data = reportData) => {
+    const rows = data?.rows ?? [];
     let content: string;
     let mime: string;
     let ext: string;
     if (format.toLowerCase() === 'json') {
-      content = JSON.stringify({ name, range, generated_at: reportData?.generated_at, rows }, null, 2);
+      content = JSON.stringify({ name, range, generated_at: data?.generated_at, rows }, null, 2);
       mime = 'application/json;charset=utf-8';
       ext = 'json';
     } else {
@@ -190,18 +203,18 @@ export default function ReportsPage() {
             </div>
             <div className="space-y-4">
               <label className="block text-sm font-semibold text-ink">Report type
-                <select className="input-field mt-1.5 w-full"><option>All reports</option>{reportTypes.map((r) => <option key={r.type}>{r.title}</option>)}</select>
+                <select value={exportType} onChange={(event) => setExportType(event.target.value)} className="input-field mt-1.5 w-full"><option value="all">All reports</option>{reportTypes.map((r) => <option key={r.type} value={r.type}>{r.title}</option>)}</select>
               </label>
               <label className="block text-sm font-semibold text-ink">Date range
                 <select defaultValue="this-month" className="input-field mt-1.5 w-full"><option value="this-month">This month</option><option value="last-month">Last month</option><option value="quarter">This quarter</option><option value="year">This year</option></select>
               </label>
               <label className="block text-sm font-semibold text-ink">Format
-                <select defaultValue="pdf" className="input-field mt-1.5 w-full"><option value="pdf">PDF</option><option value="xlsx">XLSX</option><option value="csv">CSV</option></select>
+                <select value={exportFormat} onChange={(event) => setExportFormat(event.target.value)} className="input-field mt-1.5 w-full"><option value="csv">CSV</option><option value="json">JSON</option></select>
               </label>
             </div>
             <div className="flex gap-3 justify-end mt-6 pt-4 border-t border-hairline-soft">
               <button onClick={() => setShowExport(false)} className="btn-secondary text-sm">Cancel</button>
-              <button onClick={() => { setShowExport(false); toast('Export started. The file will download shortly.', 'success'); }} className="btn-cta text-sm gap-2"><Download size={14} /> Export</button>
+              <button onClick={() => void exportLiveReport()} className="btn-cta text-sm gap-2"><Download size={14} /> Export</button>
             </div>
           </div>
         </div>
