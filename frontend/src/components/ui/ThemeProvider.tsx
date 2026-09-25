@@ -29,17 +29,16 @@ function applyTheme(theme: Theme) {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>('light');
-
-  // Read synchronously during the first client render so a returning dark-mode
-  // user does not flash light before effects run.
-  useEffect(() => {
-    const initial = readStoredTheme();
-    if (initial) {
-      setThemeState(initial);
-      applyTheme(initial);
-    }
-  }, []);
+  // Lazy initializer runs on the first client render, after the blocking theme
+  // bootstrap script has already set `data-theme` on <html>. This keeps React's
+  // initial state aligned with the DOM so we never overwrite a dark bootstrap
+  // with 'light' on mount.
+  const [theme, setThemeState] = useState<Theme>(() => {
+    if (typeof document === 'undefined') return 'light';
+    const attr = document.documentElement.dataset.theme;
+    if (attr === 'dark' || attr === 'light') return attr;
+    return readStoredTheme() ?? 'light';
+  });
 
   // Keep the attribute and color-scheme in sync if another tab changes storage.
   useEffect(() => {
