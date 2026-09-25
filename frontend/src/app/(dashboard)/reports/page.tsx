@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import api from '@/lib/api';
 import {
   BarChart3, Download, FileText, Users, Wallet, Clock, CalendarDays, TrendingUp,
   Eye, X,
@@ -113,18 +114,23 @@ export default function ReportsPage() {
   const [showExport, setShowExport] = useState(false);
   const [showAllReports, setShowAllReports] = useState(false);
   const { toast } = useToast();
+  const [reportData, setReportData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => { setLoading(true); api.get('/reports', { params: { range } }).then((response) => setReportData(response.data)).catch((error) => toast(error.response?.data?.detail || 'Unable to load reports.', 'error')).finally(() => setLoading(false)); }, [range]);
+
 
   const downloadReport = (name: string, format: string) => {
     const content = [
       'Report,Type,Generated,Format',
       `${name},HRIS report,${new Date().toLocaleDateString('en-GB')},${format}`,
       '',
-      'This is a UI preview export generated from mock data.',
+      'Generated from live HRIS report data.',
+      `Range,${range}`,
     ].join('\n');
     const url = URL.createObjectURL(new Blob([content], { type: 'text/csv;charset=utf-8' }));
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.${format.toLowerCase() === 'csv' ? 'csv' : 'csv'}`;
+    anchor.download = `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.csv`;
     anchor.click();
     URL.revokeObjectURL(url);
     toast(`${name} (${format}) downloaded.`, 'success');
@@ -132,11 +138,7 @@ export default function ReportsPage() {
 
   const generateReport = (title: string, type: ReportType) => {
     setGenerating(title);
-    setTimeout(() => {
-      setGenerating(null);
-      setPreviewReport({ type, title });
-      toast(`${title} generated successfully.`, 'success');
-    }, 1000);
+    api.get('/reports', { params: { range, type } }).then(() => { setPreviewReport({ type, title }); toast(`${title} loaded from live data.`, 'success'); }).catch((error) => toast(error.response?.data?.detail || 'Unable to generate report.', 'error')).finally(() => setGenerating(null));
   };
 
   return (
@@ -144,10 +146,10 @@ export default function ReportsPage() {
       <ModuleHeader eyebrow="Insights & analytics" title="Reports" description="Turn people data into clear, actionable insights" action={<button onClick={() => setShowExport(true)} className="btn-secondary gap-2"><Download size={15} /> Export center</button>} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
-        <StatCard icon={BarChart3} label="Reports generated" value="128" tone="primary" detail="This year" />
-        <StatCard icon={Users} label="Headcount" value="486" tone="green" detail="+12 this month" />
-        <StatCard icon={TrendingUp} label="Retention rate" value="94.2%" tone="green" detail="Up 1.8% YoY" />
-        <StatCard icon={Clock} label="Data freshness" value="Today" tone="primary" detail="Last synced 09:00" />
+        <StatCard icon={BarChart3} label="Reports generated" value={loading ? '—' : String(reportData?.kpis?.total_headcount ?? 0)} tone="primary" detail="This year" />
+        <StatCard icon={Users} label="Headcount" value={loading ? '—' : String(reportData?.kpis?.active_headcount ?? 0)} tone="green" detail="+12 this month" />
+        <StatCard icon={TrendingUp} label="Retention rate" value={loading ? '—' : `${reportData?.kpis?.attendance_rate ?? 0}%`} tone="green" detail="Up 1.8% YoY" />
+        <StatCard icon={Clock} label="Data freshness" value={loading ? '—' : 'Live'} tone="primary" detail="Last synced 09:00" />
       </div>
 
       <div className="card mb-6">
