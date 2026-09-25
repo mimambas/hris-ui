@@ -219,7 +219,7 @@ export default function CalendarPage() {
   const filteredEmployees = useMemo(() => {
     if (department === 'All') return employees;
     return employees.filter((e) => e.department === department);
-  }, [department]);
+  }, [employees, department]);
 
   const eventsByDate = useMemo(() => {
     const map: Record<string, LeaveEvent[]> = {};

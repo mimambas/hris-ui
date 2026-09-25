@@ -132,7 +132,7 @@ export default function NewEmployeePage() {
 
         {step === 1 && (
           <div className="space-y-5">
-            <div><h2 className="text-base font-bold text-ink">Employment Details</h2><p className="text-xs text-muted mt-1">Define the employee's role and working arrangement</p></div>
+            <div><h2 className="text-base font-bold text-ink">Employment Details</h2><p className="text-xs text-muted mt-1">Define the employee&#39;s role and working arrangement</p></div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <Field label="Join Date *" type="date" value={form.joinDate} onChange={(v) => set('joinDate', v)} />
               <SelectField label="Status" value={form.employmentStatus} onChange={(v) => set('employmentStatus', v)} options={[['contract', 'Contract (PKWT)'], ['permanent', 'Permanent (PKWTT)'], ['outsourcing', 'Outsourcing']]} />
