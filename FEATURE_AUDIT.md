@@ -8,7 +8,7 @@ Slice yang sudah diselesaikan dan memiliki smoke test: Organization Settings, Di
 
 Test suite: `npm run test:smoke` (17 assertions, production-backed) dan `backend/tests/test_health.py`.
 
-Sisa belum selesai: Reports, Org Chart, Onboarding checklist standalone, document requests/templates, bulk email, offboarding, bulk import, notification delivery, serta bagian dummy lainnya.
+Sisa belum selesai: Reports binary export, Org Chart hierarchy mutation, document templates/status delivery, bulk email, offboarding, bulk import, notification delivery, serta payroll statutory.
 
 ## Ringkasan status
 
@@ -34,10 +34,10 @@ Fondasi sudah ditingkatkan: tenant/RBAC migration, ownership hardening, settings
 | Directory | frontend/backend | done | `directory/page.tsx` | Hardcoded roster; tidak ada directory API/DTO |
 | Org chart | frontend/backend | partial | `org-chart/page.tsx`, `api/employees/route.ts` | Team cards sekarang dikelompokkan dari employee API; add-member persistence dan reporting hierarchy update belum lengkap |
 | Employee detail | frontend/backend | done | `employees/[id]/page.tsx` | Route ID/API tidak dipakai; profile/docs/payroll/leave hardcoded; edit/preview/download inert |
-| Payroll detail | frontend/backend | done | `payroll/[id]/page.tsx` | Hardcoded payslip; download PDF sebenarnya CSV; employee-scoped payslip API missing |
-| Onboarding checklist standalone | frontend/backend | dummy | `onboarding/checklist/page.tsx` | Local-only schema berbeda dari onboarding API |
-| Self-service payslip | frontend/backend | done | `self-service/page.tsx` | `serverPayslips=[]`; payroll self-service endpoint missing |
-| Leave balance | frontend/backend | done | `leave/page.tsx`, `leave_balances` table | Balance hardcoded; GET balance API dan approval accounting missing |
+| Payroll detail | frontend/backend | done | `payroll/[id]/page.tsx`, `api/payroll/[id]/route.ts` | Detail memakai API; export saat ini CSV, bukan PDF binary |
+| Onboarding checklist standalone | frontend/backend | partial | `onboarding/checklist/page.tsx`, `api/checklist/*` | Template API GET/POST/PATCH/DELETE dan UI persistence tersedia; association ke onboarding employee belum lengkap |
+| Self-service payslip | frontend/backend | done | `self-service/page.tsx`, `api/payroll/self-service/route.ts` | Payslip employee-scoped tersedia; PDF binary download belum ada |
+| Leave balance | frontend/backend | done | `leave/page.tsx`, `api/leave/balances/route.ts` | Balance read endpoint tersedia; approval accounting/accrual policy belum ada |
 | Document requests | frontend/backend | partial | `documents/page.tsx` RequestDocsModal | Persisted `document_requests` schema/API and modal POST now tersedia; employee submission/status workflow and delivery notifications belum ada |
 | Document policy templates | frontend | dummy | `documents/page.tsx` PolicyTemplatesModal | Placeholder text download |
 | Employee bulk email | frontend/backend | dummy | `employees/page.tsx` | Toast-only; no provider/outbox/email API |

@@ -79,6 +79,19 @@ check('reports trends present', Array.isArray(reports.data?.payroll_trend) && Ar
 
 const checklist = await call(adminToken, '/api/checklist');
 check('checklist templates list', checklist.status === 200 && Array.isArray(checklist.data?.items));
+if (checklist.status === 200) {
+  const checklistSeed = await call(adminToken, '/api/checklist', { method: 'POST', body: JSON.stringify({ name: `Smoke checklist ${Date.now()}`, category: 'Test', assignee: 'HR team', due_date: '2026-12-31', priority: 'Low' }) });
+  check('checklist template create', checklistSeed.status === 201);
+  if (checklistSeed.data?.id) {
+    const updatedChecklist = await call(adminToken, `/api/checklist/${checklistSeed.data.id}`, { method: 'PATCH', body: JSON.stringify({ status: 'completed' }) });
+    check('checklist template update', updatedChecklist.status === 200 && updatedChecklist.data?.status === 'completed');
+    const deletedChecklist = await call(adminToken, `/api/checklist/${checklistSeed.data.id}`, { method: 'DELETE' });
+    check('checklist template delete', deletedChecklist.status === 200);
+  }
+}
+
+const docRequests = await call(adminToken, '/api/documents/requests');
+check('document requests list', docRequests.status === 200 && Array.isArray(docRequests.data?.items));
 
 const positions = await call(adminToken, '/api/positions');
 check('positions list', positions.status === 200 && Array.isArray(positions.data?.items));
