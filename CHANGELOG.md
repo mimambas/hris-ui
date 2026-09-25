@@ -44,3 +44,10 @@
 - Added tenant-scoped `document_requests` schema and GET/POST API.
 - Document request modal now loads active employees and persists batch requests instead of using a fake timeout.
 - Typecheck, lint, build, and production smoke tests pass.
+
+### 2026-09-25 — Dark mode reliability
+
+- Added a blocking pre-paint theme bootstrap script to preserve the saved theme before hydration.
+- Aligned `ThemeProvider` state with the preloaded `<html data-theme>` attribute.
+- Added unlayered dark overrides for all hardcoded light utility colors used by the app.
+- Verified production HTML contains the bootstrap script before application markup; typecheck, lint, build, smoke, and backend tests pass.
