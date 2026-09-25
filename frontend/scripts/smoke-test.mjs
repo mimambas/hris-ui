@@ -73,6 +73,10 @@ check('employee list accessible', employeeList.status === 200);
 const forbiddenPayroll = await call(employeeToken, '/api/payroll/periods');
 check('employee cannot read payroll periods', forbiddenPayroll.status === 403 || forbiddenPayroll.status === 401);
 
+const reports = await call(adminToken, '/api/reports?range=This month');
+check('reports aggregation', reports.status === 200 && reports.data?.kpis && Array.isArray(reports.data?.headcount_by_department));
+check('reports trends present', Array.isArray(reports.data?.payroll_trend) && Array.isArray(reports.data?.attendance_trend));
+
 const positions = await call(adminToken, '/api/positions');
 check('positions list', positions.status === 200 && Array.isArray(positions.data?.items));
 const departmentsList = await call(adminToken, '/api/departments');

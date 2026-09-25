@@ -20,50 +20,9 @@ const reportTypes: { title: string; description: string; icon: typeof Users; ton
   { title: 'Leave utilization', description: 'Leave balances and usage across teams', icon: CalendarDays, tone: 'bg-primary-surface text-primary-light', type: 'leave' },
 ];
 
-const headcountData = [
-  { dept: 'HR', count: 24, target: 26 },
-  { dept: 'Eng', count: 186, target: 200 },
-  { dept: 'Design', count: 48, target: 50 },
-  { dept: 'Finance', count: 32, target: 34 },
-  { dept: 'Marketing', count: 56, target: 60 },
-  { dept: 'CS', count: 94, target: 100 },
-];
-
-const payrollTrendData = [
-  { month: 'Apr', gross: 3800, net: 3100, tax: 420 },
-  { month: 'May', gross: 3950, net: 3220, tax: 440 },
-  { month: 'Jun', gross: 4020, net: 3280, tax: 450 },
-  { month: 'Jul', gross: 4100, net: 3350, tax: 460 },
-  { month: 'Aug', gross: 4150, net: 3380, tax: 470 },
-  { month: 'Sep', gross: 4200, net: 3420, tax: 480 },
-];
-
-const attendanceTrendData = [
-  { month: 'Apr', present: 92.1, late: 4.2, absent: 3.7 },
-  { month: 'May', present: 91.8, late: 4.5, absent: 3.7 },
-  { month: 'Jun', present: 93.2, late: 3.8, absent: 3.0 },
-  { month: 'Jul', present: 92.5, late: 4.0, absent: 3.5 },
-  { month: 'Aug', present: 94.0, late: 3.5, absent: 2.5 },
-  { month: 'Sep', present: 93.8, late: 3.6, absent: 2.6 },
-];
-
-const leaveTypeData = [
-  { name: 'Annual Leave', value: 156, color: '#6366F1' },
-  { name: 'Sick Leave', value: 48, color: '#F59E0B' },
-  { name: 'Personal Leave', value: 22, color: '#EC4899' },
-  { name: 'Maternity', value: 8, color: '#10B981' },
-];
-
-const recentReports = [
-  { name: 'September 2026 Headcount', type: 'Headcount', date: '22 Sep 2026', format: 'PDF' },
-  { name: 'August 2026 Payroll Summary', type: 'Payroll', date: '01 Sep 2026', format: 'XLSX' },
-  { name: 'Q3 Attendance Analysis', type: 'Attendance', date: '31 Aug 2026', format: 'PDF' },
-  { name: 'Annual Leave Utilization 2026', type: 'Leave', date: '30 Aug 2026', format: 'XLSX' },
-];
-
 type ReportData = { type: ReportType; title: string };
 
-function ReportPreviewModal({ report, onClose }: { report: ReportData; onClose: () => void }) {
+function ReportPreviewModal({ report, onClose, data }: { report: ReportData; onClose: () => void; data?: any }) {
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-ink/40" onClick={onClose} />
@@ -76,30 +35,30 @@ function ReportPreviewModal({ report, onClose }: { report: ReportData; onClose: 
         {report.type === 'headcount' && (
           <div className="px-6 py-5">
             <h3 className="text-sm font-bold text-ink mb-3">Headcount by department</h3>
-            <ResponsiveContainer width="100%" height={280}><BarChart data={headcountData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}><XAxis dataKey="dept" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} /><YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} /><Tooltip contentStyle={{ fontSize: 12, borderRadius: 12, border: '1px solid #e2e8f0' }} /><Bar dataKey="count" fill="#6366F1" radius={[6, 6, 0, 0]} name="Actual" /><Bar dataKey="target" fill="#e2e8f0" radius={[6, 6, 0, 0]} name="Target" /></BarChart></ResponsiveContainer>
-            <div className="grid grid-cols-3 gap-4 mt-5"><div className="rounded-xl bg-primary-surface p-4 text-center"><p className="text-[11px] text-muted font-semibold uppercase">Total</p><p className="text-xl font-mono font-bold text-ink mt-1">486</p></div><div className="rounded-xl bg-cta-surface p-4 text-center"><p className="text-[11px] text-muted font-semibold uppercase">Open roles</p><p className="text-xl font-mono font-bold text-cta mt-1">24</p></div><div className="rounded-xl bg-amber-50 p-4 text-center"><p className="text-[11px] text-muted font-semibold uppercase">Departments</p><p className="text-xl font-mono font-bold text-accent-yellow mt-1">6</p></div></div>
+            <ResponsiveContainer width="100%" height={280}><BarChart data={data?.headcount ?? []} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}><XAxis dataKey="dept" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} /><YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} /><Tooltip contentStyle={{ fontSize: 12, borderRadius: 12, border: '1px solid #e2e8f0' }} /><Bar dataKey="count" fill="#6366F1" radius={[6, 6, 0, 0]} name="Headcount" /></BarChart></ResponsiveContainer>
+            <div className="grid grid-cols-3 gap-4 mt-5"><div className="rounded-xl bg-primary-surface p-4 text-center"><p className="text-[11px] text-muted font-semibold uppercase">Total</p><p className="text-xl font-mono font-bold text-ink mt-1">{(data?.headcount ?? []).reduce((sum: number, row: any) => sum + row.count, 0)}</p></div><div className="rounded-xl bg-cta-surface p-4 text-center"><p className="text-[11px] text-muted font-semibold uppercase">Departments</p><p className="text-xl font-mono font-bold text-cta mt-1">{data?.headcount?.length ?? 0}</p></div><div className="rounded-xl bg-amber-50 p-4 text-center"><p className="text-[11px] text-muted font-semibold uppercase">Payroll entries</p><p className="text-xl font-mono font-bold text-accent-yellow mt-1">{data?.payroll?.length ?? 0}</p></div></div>
           </div>
         )}
 
         {report.type === 'payroll' && (
           <div className="px-6 py-5">
             <h3 className="text-sm font-bold text-ink mb-3">Payroll trend (in millions)</h3>
-            <ResponsiveContainer width="100%" height={280}><LineChart data={payrollTrendData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" /><XAxis dataKey="month" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} /><YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} /><Tooltip contentStyle={{ fontSize: 12, borderRadius: 12, border: '1px solid #e2e8f0' }} /><Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} /><Line type="monotone" dataKey="gross" stroke="#6366F1" strokeWidth={2} dot={{ r: 4 }} name="Gross" /><Line type="monotone" dataKey="net" stroke="#10B981" strokeWidth={2} dot={{ r: 4 }} name="Net" /><Line type="monotone" dataKey="tax" stroke="#F59E0B" strokeWidth={2} dot={{ r: 4 }} name="Tax" /></LineChart></ResponsiveContainer>
+            <ResponsiveContainer width="100%" height={280}><LineChart data={data?.payroll ?? []} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" /><XAxis dataKey="month" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} /><YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} /><Tooltip contentStyle={{ fontSize: 12, borderRadius: 12, border: '1px solid #e2e8f0' }} /><Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} /><Line type="monotone" dataKey="gross" stroke="#6366F1" strokeWidth={2} dot={{ r: 4 }} name="Gross" /><Line type="monotone" dataKey="net" stroke="#10B981" strokeWidth={2} dot={{ r: 4 }} name="Net" /><Line type="monotone" dataKey="tax" stroke="#F59E0B" strokeWidth={2} dot={{ r: 4 }} name="Tax" /></LineChart></ResponsiveContainer>
           </div>
         )}
 
         {report.type === 'attendance' && (
           <div className="px-6 py-5">
             <h3 className="text-sm font-bold text-ink mb-3">Attendance trend (%)</h3>
-            <ResponsiveContainer width="100%" height={280}><LineChart data={attendanceTrendData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" /><XAxis dataKey="month" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} /><YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} /><Tooltip contentStyle={{ fontSize: 12, borderRadius: 12, border: '1px solid #e2e8f0' }} /><Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} /><Line type="monotone" dataKey="present" stroke="#10B981" strokeWidth={2} dot={{ r: 4 }} name="Present %" /><Line type="monotone" dataKey="late" stroke="#F59E0B" strokeWidth={2} dot={{ r: 4 }} name="Late %" /><Line type="monotone" dataKey="absent" stroke="#EC4899" strokeWidth={2} dot={{ r: 4 }} name="Absent %" /></LineChart></ResponsiveContainer>
+            <ResponsiveContainer width="100%" height={280}><LineChart data={data?.attendance ?? []} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}><CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" /><XAxis dataKey="month" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} /><YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} /><Tooltip contentStyle={{ fontSize: 12, borderRadius: 12, border: '1px solid #e2e8f0' }} /><Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} /><Line type="monotone" dataKey="present" stroke="#10B981" strokeWidth={2} dot={{ r: 4 }} name="Present %" /><Line type="monotone" dataKey="late" stroke="#F59E0B" strokeWidth={2} dot={{ r: 4 }} name="Late %" /><Line type="monotone" dataKey="absent" stroke="#EC4899" strokeWidth={2} dot={{ r: 4 }} name="Absent %" /></LineChart></ResponsiveContainer>
           </div>
         )}
 
         {report.type === 'leave' && (
           <div className="px-6 py-5">
             <h3 className="text-sm font-bold text-ink mb-3">Leave utilization by type</h3>
-            <ResponsiveContainer width="100%" height={280}><PieChart><Pie data={leaveTypeData} cx="50%" cy="50%" outerRadius={90} innerRadius={50} paddingAngle={3} dataKey="value" label={({ name, value }) => `${name}: ${value}`}>{leaveTypeData.map((entry) => <Cell key={entry.name} fill={entry.color} stroke="none" />)}</Pie><Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} /></PieChart></ResponsiveContainer>
-            <div className="grid grid-cols-2 gap-3 mt-4">{leaveTypeData.map((item) => <div key={item.name} className="rounded-lg border border-hairline p-3 flex items-center gap-3"><div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.color }} /><div><p className="text-xs font-semibold text-ink">{item.name}</p><p className="text-[11px] text-muted">{item.value} days used</p></div></div>)}</div>
+            <ResponsiveContainer width="100%" height={280}><PieChart><Pie data={data?.leave ?? []} cx="50%" cy="50%" outerRadius={90} innerRadius={50} paddingAngle={3} dataKey="value" label={({ name, value }) => `${name}: ${value}`}>{(data?.leave ?? []).map((entry: any) => <Cell key={entry.name} fill={entry.color} stroke="none" />)}</Pie><Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} /></PieChart></ResponsiveContainer>
+            <div className="grid grid-cols-2 gap-3 mt-4">{(data?.leave ?? []).map((item: any) => <div key={item.name} className="rounded-lg border border-hairline p-3 flex items-center gap-3"><div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.color }} /><div><p className="text-xs font-semibold text-ink">{item.name}</p><p className="text-[11px] text-muted">{item.value} days used</p></div></div>)}</div>
           </div>
         )}
       </div>
@@ -113,10 +72,15 @@ export default function ReportsPage() {
   const [previewReport, setPreviewReport] = useState<ReportData | null>(null);
   const [showExport, setShowExport] = useState(false);
   const [showAllReports, setShowAllReports] = useState(false);
+  const recentReports: any[] = [];
   const { toast } = useToast();
   const [reportData, setReportData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => { setLoading(true); api.get('/reports', { params: { range } }).then((response) => setReportData(response.data)).catch((error) => toast(error.response?.data?.detail || 'Unable to load reports.', 'error')).finally(() => setLoading(false)); }, [range]);
+  const liveHeadcount = reportData?.headcount_by_department ?? [];
+  const livePayroll = reportData?.payroll_trend ?? [];
+  const liveAttendance = reportData?.attendance_trend ?? [];
+  const liveLeave = (reportData?.leave_by_type ?? []).map((item: any, index: number) => ({ name: item.type, value: item.count, color: ['#6366F1', '#F59E0B', '#EC4899', '#10B981', '#0EA5E9'][index % 5] }));
 
 
   const downloadReport = (name: string, format: string) => {
@@ -188,7 +152,7 @@ export default function ReportsPage() {
               </tr>
             </thead>
             <tbody>
-              {recentReports.map((report) => (
+              {recentReports.length === 0 ? <tr><td colSpan={5} className="py-8 text-center text-sm text-muted">No generated reports stored yet.</td></tr> : recentReports.map((report) => (
                 <tr key={report.name} className="table-row">
                   <td className="table-cell"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-lg bg-primary-surface flex items-center justify-center"><FileText size={14} className="text-primary" /></div><span className="font-semibold text-ink">{report.name}</span></div></td>
                   <td className="table-cell text-body">{report.type}</td>
@@ -202,7 +166,7 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      {previewReport && <ReportPreviewModal report={previewReport} onClose={() => setPreviewReport(null)} />}
+      {previewReport && <ReportPreviewModal report={previewReport} data={{ headcount: liveHeadcount, payroll: livePayroll, attendance: liveAttendance, leave: liveLeave }} onClose={() => setPreviewReport(null)} />}
 
       {showExport && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" role="dialog" aria-modal="true">
@@ -236,21 +200,12 @@ export default function ReportsPage() {
           <div className="absolute inset-0 bg-ink/40" onClick={() => setShowAllReports(false)} />
           <div className="relative w-full max-w-2xl rounded-2xl bg-canvas border border-hairline shadow-2xl max-h-[85vh] overflow-y-auto">
             <div className="sticky top-0 bg-canvas border-b border-hairline-soft px-6 py-4 flex items-center justify-between z-10">
-              <div><h2 className="text-base font-bold text-ink">All Reports</h2><p className="text-xs text-muted mt-0.5">128 reports generated this year</p></div>
+              <div><h2 className="text-base font-bold text-ink">All Reports</h2><p className="text-xs text-muted mt-0.5">Generated reports from live data</p></div>
               <button onClick={() => setShowAllReports(false)} aria-label="Close" className="btn-secondary min-h-10 min-w-10 px-3"><X size={15} /></button>
             </div>
             <div className="px-6 py-5">
               <div className="space-y-2">
-                {[
-                  { name: 'September 2026 Headcount', type: 'Headcount', date: '22 Sep 2026', format: 'PDF' },
-                  { name: 'August 2026 Payroll Summary', type: 'Payroll', date: '01 Sep 2026', format: 'XLSX' },
-                  { name: 'Q3 Attendance Analysis', type: 'Attendance', date: '31 Aug 2026', format: 'PDF' },
-                  { name: 'Annual Leave Utilization 2026', type: 'Leave', date: '30 Aug 2026', format: 'XLSX' },
-                  { name: 'August 2026 Headcount', type: 'Headcount', date: '01 Aug 2026', format: 'PDF' },
-                  { name: 'July 2026 Payroll Summary', type: 'Payroll', date: '01 Jul 2026', format: 'XLSX' },
-                  { name: 'Q2 Attendance Analysis', type: 'Attendance', date: '30 Jun 2026', format: 'PDF' },
-                  { name: 'Mid-year Leave Balance', type: 'Leave', date: '30 Jun 2026', format: 'CSV' },
-                ].map((report, i) => (
+                {recentReports.map((report, i) => (
                   <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-hairline hover:bg-surface-soft transition-colors">
                     <div className="w-9 h-9 rounded-lg bg-primary-surface flex items-center justify-center shrink-0"><FileText size={15} className="text-primary" /></div>
                     <div className="flex-1 min-w-0">
