@@ -60,7 +60,7 @@ Fondasi sudah ditingkatkan: tenant/RBAC migration, ownership hardening, settings
 | Atomic business sequences | partial | employees/expenses routes | latest+1 generation race-prone |
 | RLS | missing | Supabase migrations | Service role bypasses RLS; app predicates are sole boundary |
 | Tests | missing/partial | `backend/tests`, no frontend test script | Only health smoke test added; no auth/IDOR/E2E/payroll golden tests |
-| CI | missing | No `.github/workflows` | No automated typecheck/build/test/security gate |
+| CI | done | `.github/workflows/ci.yml` | Jobs frontend typecheck/lint/build, backend pytest, production smoke; typecheck script ditambahkan di `frontend/package.json` |
 | Operations | partial | Vercel/Supabase config | No restore drill, RPO/RTO, structured logs, tracing, SLO, queue |
 
 ## Required implementation sequence

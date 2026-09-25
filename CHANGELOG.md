@@ -77,3 +77,10 @@
 - Org chart now exposes live employee reporting metadata and uses live member counts.
 - Added production smoke assertion that employee hierarchy DTOs include `reporting_to`.
 - Typecheck, lint, build, and smoke tests pass.
+
+### 2026-09-26 — CI pipeline
+
+- Added `.github/workflows/ci.yml` running frontend typecheck/lint/build, backend pytest, and production smoke tests.
+- Added `npm run typecheck` script.
+- Org chart now exposes live reporting metadata with a smoke assertion.
+- Verified all CI commands locally.
