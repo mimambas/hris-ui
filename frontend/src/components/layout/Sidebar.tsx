@@ -29,6 +29,7 @@ const sections: NavSection[] = [
       { label: 'Employees', href: '/employees', icon: Users },
       { label: 'Directory', href: '/directory', icon: Search },
       { label: 'Departments', href: '/departments', icon: Building2 },
+      { label: 'Positions', href: '/positions', icon: Briefcase },
       { label: 'Org Chart', href: '/org-chart', icon: GitBranch },
     ],
   },

@@ -73,6 +73,11 @@ check('employee list accessible', employeeList.status === 200);
 const forbiddenPayroll = await call(employeeToken, '/api/payroll/periods');
 check('employee cannot read payroll periods', forbiddenPayroll.status === 403 || forbiddenPayroll.status === 401);
 
+const positions = await call(adminToken, '/api/positions');
+check('positions list', positions.status === 200 && Array.isArray(positions.data?.items));
+const departmentsList = await call(adminToken, '/api/departments');
+check('departments feed', departmentsList.status === 200 && Array.isArray(departmentsList.data?.items));
+
 const audit = await call(adminToken, '/api/audit-log?per_page=100');
 check('audit log read', audit.status === 200 && Array.isArray(audit.data?.items));
 check('audit log items scoped', audit.data?.items?.every((item) => Boolean(item.id)) ?? false);
