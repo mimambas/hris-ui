@@ -51,3 +51,9 @@
 - Aligned `ThemeProvider` state with the preloaded `<html data-theme>` attribute.
 - Added unlayered dark overrides for all hardcoded light utility colors used by the app.
 - Verified production HTML contains the bootstrap script before application markup; typecheck, lint, build, smoke, and backend tests pass.
+
+### 2026-09-25 — Audit UI cleanup
+
+- Removed stale random audit fixtures and hardcoded KPI values.
+- API audit rows now map category to icon/color and refetch when search/category changes.
+- Verified production smoke test, TypeScript, lint, build, and backend tests.
