@@ -1,7 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
+import api from '@/lib/api';
 import {
   AlertTriangle,
   BookOpen,
@@ -40,19 +41,9 @@ type Task = {
   icon: LucideIcon;
 };
 
-const employees = ['Ava Thompson', 'Liam Chen', 'Maya Patel'];
+const employees = ['Ava Thompson'];
 const categories = ['Profile', 'Documents', 'IT Setup', 'Training', 'Team', 'Review'];
 const priorities: Priority[] = ['Low', 'Medium', 'High'];
-
-const initialTasks: Task[] = [
-  { id: '1', title: 'Complete personal profile', category: 'Profile', assignee: 'New hire', employee: 'Ava Thompson', dueDate: '2026-09-18', status: 'completed', priority: 'High', icon: UserPlus },
-  { id: '2', title: 'Upload identity documents', category: 'Documents', assignee: 'New hire', employee: 'Ava Thompson', dueDate: '2026-09-18', status: 'completed', priority: 'High', icon: FileSignature },
-  { id: '3', title: 'Set up laptop and accounts', category: 'IT Setup', assignee: 'IT team', employee: 'Ava Thompson', dueDate: '2026-09-19', status: 'completed', priority: 'Medium', icon: Laptop },
-  { id: '4', title: 'Review employee handbook', category: 'Training', assignee: 'New hire', employee: 'Liam Chen', dueDate: '2026-09-22', status: 'in-progress', priority: 'Medium', icon: BookOpen },
-  { id: '5', title: 'Meet your team', category: 'Team', assignee: 'Manager', employee: 'Liam Chen', dueDate: '2026-09-23', status: 'pending', priority: 'Low', icon: UserPlus },
-  { id: '6', title: 'Complete compliance training', category: 'Training', assignee: 'New hire', employee: 'Maya Patel', dueDate: '2026-09-25', status: 'pending', priority: 'High', icon: ClipboardCheck },
-  { id: '7', title: '30-day check-in', category: 'Review', assignee: 'Manager', employee: 'Maya Patel', dueDate: '2026-10-18', status: 'pending', priority: 'Medium', icon: Clock },
-];
 
 const statusMeta: Record<TaskStatus, { label: string; color: string; icon: LucideIcon }> = {
   pending: { label: 'Not started', color: 'bg-surface-strong text-muted', icon: Circle },
@@ -74,12 +65,16 @@ function isOverdue(task: Task) {
 
 export default function OnboardingChecklistPage() {
   const { toast } = useToast();
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('All tasks');
   const [employeeFilter, setEmployeeFilter] = useState('All employees');
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [deleteTask, setDeleteTask] = useState<Task | null>(null);
   const [form, setForm] = useState({ name: '', category: categories[0], assignee: 'New hire', employee: employees[0], dueDate: '', priority: 'Medium' as Priority });
+
+  const load = async () => { setLoading(true); try { const response = await api.get('/checklist'); setTasks(response.data.items ?? []); } catch (error: any) { toast(error.response?.data?.detail || 'Unable to load checklist.', 'error'); } finally { setLoading(false); } };
+  useEffect(() => { void load(); }, []);
 
   const filteredTasks = useMemo(() => tasks.filter((task) => {
     const matchesFilter = filter === 'All tasks'
@@ -92,14 +87,17 @@ export default function OnboardingChecklistPage() {
   const completedCount = tasks.filter((task) => task.status === 'completed').length;
   const overdueCount = tasks.filter(isOverdue).length;
 
-  function advanceStatus(task: Task) {
+  async function advanceStatus(task: Task) {
     const currentIndex = statusOrder.indexOf(task.status);
     const nextStatus = statusOrder[(currentIndex + 1) % statusOrder.length];
-    setTasks((current) => current.map((item) => item.id === task.id ? { ...item, status: nextStatus } : item));
-    toast(`${task.title} moved to ${statusMeta[nextStatus].label.toLowerCase()}.`, 'success');
+    try {
+      await api.patch(`/checklist/${task.id}`, { status: nextStatus });
+      setTasks((current) => current.map((item) => item.id === task.id ? { ...item, status: nextStatus } : item));
+      toast(`${task.title} moved to ${statusMeta[nextStatus].label.toLowerCase()}.`, 'success');
+    } catch (error: any) { toast(error.response?.data?.detail || 'Unable to update task.', 'error'); }
   }
 
-  function handleAddTask(event: FormEvent<HTMLFormElement>) {
+  async function handleAddTask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!form.name.trim() || !form.category || !form.assignee || !form.dueDate || !form.priority) {
       toast('Complete all required fields before adding the task.', 'error');
@@ -116,15 +114,15 @@ export default function OnboardingChecklistPage() {
       priority: form.priority,
       icon: ClipboardCheck,
     };
-    setTasks((current) => [...current, newTask]);
+    try { const response = await api.post('/checklist', { name: newTask.title, category: newTask.category, assignee: newTask.assignee, due_date: newTask.dueDate, priority: newTask.priority }); setTasks((current) => [...current, response.data]); } catch (error: any) { toast(error.response?.data?.detail || 'Unable to add task.', 'error'); return; }
     setForm({ name: '', category: categories[0], assignee: 'New hire', employee: employees[0], dueDate: '', priority: 'Medium' });
     setIsAddOpen(false);
     toast('Task added to Not started.', 'success');
   }
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (!deleteTask) return;
-    setTasks((current) => current.filter((task) => task.id !== deleteTask.id));
+    try { await api.delete(`/checklist/${deleteTask.id}`); setTasks((current) => current.filter((task) => task.id !== deleteTask.id)); } catch (error: any) { toast(error.response?.data?.detail || 'Unable to delete task.', 'error'); setDeleteTask(null); return; }
     toast(`“${deleteTask.title}” deleted.`, 'success');
     setDeleteTask(null);
   }
@@ -144,6 +142,7 @@ export default function OnboardingChecklistPage() {
         <div className="card"><p className="text-xs text-muted font-semibold">Average completion</p><p className="mt-2 font-mono text-2xl font-bold text-primary">9.4 days</p><p className="text-xs text-muted mt-1">{overdueCount ? `${overdueCount} overdue task${overdueCount === 1 ? '' : 's'}` : 'Per employee'}</p></div>
       </div>
 
+      {loading && <p className="mb-4 text-sm text-muted">Loading checklist…</p>}
       <div className="card p-0 overflow-hidden">
         <div className="px-5 py-4 border-b border-hairline-soft flex flex-col lg:flex-row lg:items-center gap-3">
           <div className="flex items-center gap-2 overflow-x-auto">

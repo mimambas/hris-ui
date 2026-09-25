@@ -32,3 +32,9 @@
 - Reports generation now records real report metadata and Recent/All Reports load persisted history.
 - CSV and JSON export use live report rows; mock export text was removed.
 - Added production smoke coverage for report aggregation and trend data.
+
+### 2026-09-25 — Standalone checklist persistence
+
+- Added `checklist_templates` schema and tenant-scoped checklist API.
+- Connected standalone Onboarding Checklist load/add/status/delete actions to API.
+- Removed hardcoded task fixture source of truth; verified TypeScript, lint, build, and production smoke tests.
