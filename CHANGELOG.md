@@ -64,3 +64,10 @@
 - Added required start date field, since employee creation requires join_date.
 - Removed the toast-only success path; errors surface from the API.
 - Typecheck, lint, build, and production smoke tests pass.
+
+### 2026-09-26 — Attendance uniqueness
+
+- Added a unique `(employee_id, date)` index on attendance with a dedupe step so repeated migrations stay idempotent.
+- Added production smoke assertions for attendance create and duplicate rejection (409).
+- Fixed Org Chart add-member to persist via `POST /api/employees` with `reporting_to` and department id; start date field added.
+- Typecheck, lint, build, and smoke tests pass.

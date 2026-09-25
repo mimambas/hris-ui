@@ -56,7 +56,7 @@ Fondasi sudah ditingkatkan: tenant/RBAC migration, ownership hardening, settings
 | Auth/session enterprise | partial | `auth/*`, `lib/api.ts` | MFA/SSO/SCIM/revocation/rate limiting; tokens use localStorage |
 | Payroll compliance | partial | payroll process route | Placeholder formulas; no PPh21 TER/PTKP, BPJS caps, THR, overtime, statutory exports |
 | Atomic transactions | missing | leave/onboarding/payroll routes | Multi-write operations not transactional/RPC |
-| Unique attendance constraint | missing | attendance migration/API | Read-before-insert race remains |
+| Unique attendance constraint | done | `supabase/migrations/20260926090000_attendance_unique.sql` | Unique index `(employee_id,date)` dengan dedupe; smoke test duplikat `409` lulus |
 | Atomic business sequences | partial | employees/expenses routes | latest+1 generation race-prone |
 | RLS | missing | Supabase migrations | Service role bypasses RLS; app predicates are sole boundary |
 | Tests | missing/partial | `backend/tests`, no frontend test script | Only health smoke test added; no auth/IDOR/E2E/payroll golden tests |

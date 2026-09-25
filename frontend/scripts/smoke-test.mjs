@@ -93,6 +93,16 @@ if (checklist.status === 200) {
 const docRequests = await call(adminToken, '/api/documents/requests');
 check('document requests list', docRequests.status === 200 && Array.isArray(docRequests.data?.items));
 
+const employeesForAttendance = await call(adminToken, '/api/employees?per_page=100');
+if (employeesForAttendance.status === 200 && employeesForAttendance.data.items.length) {
+  const targetEmployee = employeesForAttendance.data.items[0];
+  const today = new Date().toISOString().slice(0, 10);
+  const firstClockIn = await call(adminToken, '/api/attendance', { method: 'POST', body: JSON.stringify({ employee_id: targetEmployee.id, date: today, status: 'present', check_in_time: '08:00', source: 'manual' }) });
+  check('attendance create', firstClockIn.status === 201 || firstClockIn.status === 409);
+  const duplicateClockIn = await call(adminToken, '/api/attendance', { method: 'POST', body: JSON.stringify({ employee_id: targetEmployee.id, date: today, status: 'present', check_in_time: '09:00', source: 'manual' }) });
+  check('attendance duplicate rejected', duplicateClockIn.status === 409);
+}
+
 const positions = await call(adminToken, '/api/positions');
 check('positions list', positions.status === 200 && Array.isArray(positions.data?.items));
 const departmentsList = await call(adminToken, '/api/departments');
