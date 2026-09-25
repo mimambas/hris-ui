@@ -96,6 +96,7 @@ export default function SelfServicePage() {
   const [serverPayslips, setServerPayslips] = useState<any[]>([]);
   const [serverLeaves, setServerLeaves] = useState<any[]>([]);
   const [serverAttendance, setServerAttendance] = useState<any[]>([]);
+  const [serverBalances, setServerBalances] = useState<any[]>([]);
   const [leaveForm, setLeaveForm] = useState({ type: 'Annual', start: '', end: '', reason: '' });
   const [formError, setFormError] = useState('');
   const [profileForm, setProfileForm] = useState({
@@ -107,17 +108,20 @@ export default function SelfServicePage() {
     try {
       const me = await api.get('/auth/me');
       const employee = me.data.employee_id ? await api.get(`/employees/${me.data.employee_id}`) : null;
-      const [leaves, attendance, documents] = await Promise.all([
+      const [leaves, attendance, documents, payroll, balances] = await Promise.all([
         api.get('/leave', { params: { employee_id: me.data.employee_id, per_page: 100 } }),
         api.get('/attendance', { params: { employee_id: me.data.employee_id, per_page: 100 } }),
         api.get('/documents', { params: { per_page: 100 } }),
+        api.get('/payroll/self-service'),
+        api.get('/leave/balances'),
       ]);
       setServerProfile(employee?.data ?? null);
       setServerLeaves(leaves.data.items ?? []);
       setServerAttendance(attendance.data.items ?? []);
       const open = (attendance.data.items ?? []).some((row: any) => row.check_in_time && !row.check_out_time);
       setClockedIn(open);
-      setServerPayslips([]);
+      setServerPayslips((payroll.data.items ?? []).map((row: any) => ({ ...row, month: row.period, deductions: row.deductions, gross: row.gross, net: row.net })));
+      setServerBalances(balances.data.items ?? []);
       if (employee?.data) setProfileForm((current) => ({ ...current, phone: employee.data.phone ?? '', address: employee.data.address_domisili ?? employee.data.address_ktp ?? '', emergency: `${employee.data.emergency_contact_name ?? ''} ${employee.data.emergency_contact_phone ?? ''}`.trim() }));
     } catch (error: any) { toast(error.response?.data?.detail || 'Unable to load your workspace.', 'error'); }
     finally { setLoading(false); }
@@ -180,7 +184,7 @@ export default function SelfServicePage() {
           onDownload={(data) => { downloadPayslip(data); toast('Payslip download started.', 'success'); }}
         />
       )}
-      {tab === 'Leave' && <LeaveTab leaves={serverLeaves} onRequest={() => setShowLeave(true)} />}
+      {tab === 'Leave' && <LeaveTab leaves={serverLeaves} balances={serverBalances} onRequest={() => setShowLeave(true)} />}
       {tab === 'Attendance' && (
         <AttendanceTab
           attendance={serverAttendance}
@@ -292,7 +296,7 @@ function Overview({ onTab, person }: { onTab: (t: Tab) => void; person?: any }) 
 
 /* ─── Tab: Payslips ─── */
 
-function PayslipsTab({ payslips: rows, onView, onDownload }: { payslips: typeof payslips; onView: (d: typeof payslips[number]) => void; onDownload: (d: typeof payslips[number]) => void }) {
+function PayslipsTab({ payslips: rows, onView, onDownload }: { payslips: any[]; onView: (d: any) => void; onDownload: (d: any) => void }) {
   return (
     <div className="card">
       <div className="flex items-center gap-3 mb-5">
@@ -314,8 +318,8 @@ function PayslipsTab({ payslips: rows, onView, onDownload }: { payslips: typeof 
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <tr key={row.month} className="table-row">
+            {rows.length === 0 ? <tr><td colSpan={6} className="py-8 text-center text-sm text-muted">No processed payslips available.</td></tr> : rows.map((row) => (
+              <tr key={row.id ?? row.month} className="table-row">
                 <td className="table-cell font-semibold text-ink">{row.month}</td>
                 <td className="table-cell text-body font-mono">{rupiah(row.gross)}</td>
                 <td className="table-cell text-body font-mono">{rupiah(row.deductions)}</td>
@@ -340,7 +344,7 @@ function PayslipsTab({ payslips: rows, onView, onDownload }: { payslips: typeof 
 
 /* ─── Tab: Leave ─── */
 
-function LeaveTab({ leaves, onRequest }: { leaves: any[]; onRequest: () => void }) {
+function LeaveTab({ leaves, balances, onRequest }: { leaves: any[]; balances: any[]; onRequest: () => void }) {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
@@ -354,13 +358,13 @@ function LeaveTab({ leaves, onRequest }: { leaves: any[]; onRequest: () => void 
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {[{ label: 'Annual leave', used: 3, total: 12 }, { label: 'Sick leave', used: 2, total: 12 }, { label: 'Personal leave', used: 1, total: 3 }].map((item) => (
-          <div className="card" key={item.label}>
-            <p className="text-xs text-muted">{item.label}</p>
+        {(balances.length ? balances : []).length === 0 ? <p className="text-sm text-muted col-span-full py-6 text-center">No leave balances configured for this year.</p> : balances.map((item) => (
+          <div className="card" key={item.leave_type}>
+            <p className="text-xs text-muted capitalize">{item.leave_type} leave</p>
             <p className="text-xl font-mono font-bold text-ink mt-2">
-              {item.total - item.used} <span className="text-xs font-sans font-normal text-muted">of {item.total} days left</span>
+              {item.remaining_days} <span className="text-xs font-sans font-normal text-muted">of {item.total_days} days left</span>
             </p>
-            <div className="mt-3"><Progress value={item.total - item.used} max={item.total} /></div>
+            <div className="mt-3"><Progress value={item.remaining_days} max={item.total_days || 1} /></div>
           </div>
         ))}
       </div>
