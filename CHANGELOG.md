@@ -25,3 +25,10 @@
 - Reports page now loads KPI and chart series from the API instead of hardcoded fixtures.
 - Preview modal receives live series; removed mock target bars and dead recent-report fixtures.
 - Added `reports aggregation` and `reports trends present` smoke assertions; all smoke tests pass after deploy.
+
+### 2026-09-25 — Reports history and export
+
+- Added `report_generations` persistence and `/api/reports/generations` GET/POST.
+- Reports generation now records real report metadata and Recent/All Reports load persisted history.
+- CSV and JSON export use live report rows; mock export text was removed.
+- Added production smoke coverage for report aggregation and trend data.

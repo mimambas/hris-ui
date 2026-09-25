@@ -72,11 +72,13 @@ export default function ReportsPage() {
   const [previewReport, setPreviewReport] = useState<ReportData | null>(null);
   const [showExport, setShowExport] = useState(false);
   const [showAllReports, setShowAllReports] = useState(false);
-  const recentReports: any[] = [];
+  const [generations, setGenerations] = useState<any[]>([]);
   const { toast } = useToast();
   const [reportData, setReportData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => { setLoading(true); api.get('/reports', { params: { range } }).then((response) => setReportData(response.data)).catch((error) => toast(error.response?.data?.detail || 'Unable to load reports.', 'error')).finally(() => setLoading(false)); }, [range]);
+  const loadGenerations = () => { api.get('/reports/generations').then((response) => setGenerations(response.data.items ?? [])).catch(() => setGenerations([])); };
+  useEffect(() => { loadGenerations(); }, []);
   const liveHeadcount = reportData?.headcount_by_department ?? [];
   const livePayroll = reportData?.payroll_trend ?? [];
   const liveAttendance = reportData?.attendance_trend ?? [];
@@ -84,25 +86,35 @@ export default function ReportsPage() {
 
 
   const downloadReport = (name: string, format: string) => {
-    const content = [
-      'Report,Type,Generated,Format',
-      `${name},HRIS report,${new Date().toLocaleDateString('en-GB')},${format}`,
-      '',
-      'Generated from live HRIS report data.',
-      `Range,${range}`,
-    ].join('\n');
-    const url = URL.createObjectURL(new Blob([content], { type: 'text/csv;charset=utf-8' }));
+    const rows = reportData?.rows ?? [];
+    let content: string;
+    let mime: string;
+    let ext: string;
+    if (format.toLowerCase() === 'json') {
+      content = JSON.stringify({ name, range, generated_at: reportData?.generated_at, rows }, null, 2);
+      mime = 'application/json;charset=utf-8';
+      ext = 'json';
+    } else {
+      content = ['Category,Label,Value', ...rows.map((row: any) => `${row.category},${row.label},${row.value}`)].join('\n');
+      mime = 'text/csv;charset=utf-8';
+      ext = 'csv';
+    }
+    const url = URL.createObjectURL(new Blob([content], { type: mime }));
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.csv`;
+    anchor.download = `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.${ext}`;
     anchor.click();
     URL.revokeObjectURL(url);
-    toast(`${name} (${format}) downloaded.`, 'success');
+    toast(`${name} (${ext.toUpperCase()}) downloaded.`, 'success');
   };
 
   const generateReport = (title: string, type: ReportType) => {
     setGenerating(title);
-    api.get('/reports', { params: { range, type } }).then(() => { setPreviewReport({ type, title }); toast(`${title} loaded from live data.`, 'success'); }).catch((error) => toast(error.response?.data?.detail || 'Unable to generate report.', 'error')).finally(() => setGenerating(null));
+    api.get('/reports', { params: { range, type } }).then((response) => {
+      setReportData(response.data);
+      setPreviewReport({ type, title });
+      return api.post('/reports/generations', { name: title, report_type: type, format: 'csv', range, row_count: (response.data?.rows ?? []).length });
+    }).then(() => loadGenerations()).then(() => toast(`${title} generated successfully.`, 'success')).catch((error) => toast(error.response?.data?.detail || 'Unable to generate report.', 'error')).finally(() => setGenerating(null));
   };
 
   return (
@@ -152,12 +164,12 @@ export default function ReportsPage() {
               </tr>
             </thead>
             <tbody>
-              {recentReports.length === 0 ? <tr><td colSpan={5} className="py-8 text-center text-sm text-muted">No generated reports stored yet.</td></tr> : recentReports.map((report) => (
+              {generations.length === 0 ? <tr><td colSpan={5} className="py-8 text-center text-sm text-muted">No generated reports stored yet.</td></tr> : generations.map((report) => (
                 <tr key={report.name} className="table-row">
                   <td className="table-cell"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-lg bg-primary-surface flex items-center justify-center"><FileText size={14} className="text-primary" /></div><span className="font-semibold text-ink">{report.name}</span></div></td>
-                  <td className="table-cell text-body">{report.type}</td>
-                  <td className="table-cell text-muted">{report.date}</td>
-                  <td className="table-cell"><span className="badge bg-surface-strong text-muted">{report.format}</span></td>
+                  <td className="table-cell text-body">{report.report_type}</td>
+                  <td className="table-cell text-muted">{new Date(report.generated_at).toLocaleString('en-GB')}</td>
+                  <td className="table-cell"><span className="badge bg-surface-strong text-muted">{String(report.format).toUpperCase()}</span></td>
                   <td className="table-cell text-right"><button onClick={() => downloadReport(report.name, report.format)} className="btn-secondary min-h-10 py-2 px-3 text-xs gap-1.5"><Download size={13} /> Download</button></td>
                 </tr>
               ))}
@@ -205,12 +217,12 @@ export default function ReportsPage() {
             </div>
             <div className="px-6 py-5">
               <div className="space-y-2">
-                {recentReports.map((report, i) => (
+                {generations.map((report, i) => (
                   <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-hairline hover:bg-surface-soft transition-colors">
                     <div className="w-9 h-9 rounded-lg bg-primary-surface flex items-center justify-center shrink-0"><FileText size={15} className="text-primary" /></div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-ink">{report.name}</p>
-                      <p className="text-[11px] text-muted">{report.type} · {report.date}</p>
+                      <p className="text-[11px] text-muted">{report.report_type} · {new Date(report.generated_at).toLocaleString('en-GB')}</p>
                     </div>
                     <span className="badge bg-surface-strong text-muted text-[10px]">{report.format}</span>
                     <button onClick={() => downloadReport(report.name, report.format)} className="min-h-9 min-w-9 rounded-lg hover:bg-primary-surface flex items-center justify-center" aria-label={`Download ${report.name}`}><Download size={14} className="text-muted" /></button>
