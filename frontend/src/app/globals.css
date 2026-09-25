@@ -265,3 +265,11 @@ Flat selectors are used because these are plain CSS, not a Tailwind layer. */
 [data-theme="dark"] .bg-sky-500 { background-color: #0284c7; }
 [data-theme="dark"] .bg-white { background-color: var(--canvas); }
 [data-theme="dark"] .text-indigo-200, [data-theme="dark"] .text-indigo-100 { color: var(--muted); }
+  [data-theme="dark"] .bg-amber-200 { background-color: var(--warning-surface); }
+  [data-theme="dark"] .bg-amber-600 { background-color: var(--warning-text); }
+  [data-theme="dark"] .bg-emerald-100 { background-color: var(--cta-surface); }
+  [data-theme="dark"] .bg-red-200, [data-theme="dark"] .bg-red-300, [data-theme="dark"] .bg-red-400 { background-color: var(--danger-surface); }
+  [data-theme="dark"] .bg-red-700 { background-color: #991b1b; }
+  [data-theme="dark"] .text-red-600 { color: var(--semantic-down); }
+  [data-theme="dark"] .border-indigo-100 { border-color: var(--primary-surface); }
+
