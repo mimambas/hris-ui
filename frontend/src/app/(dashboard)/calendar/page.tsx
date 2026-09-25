@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
+import api from '@/lib/api';
 import { ChevronLeft, ChevronRight, CalendarDays, X } from 'lucide-react';
 import ModuleHeader from '@/components/ui/ModuleHeader';
 import { useToast } from '@/components/ui/Toast';
@@ -20,39 +21,8 @@ type DayRecord = {
   status: 'present' | 'absent' | 'late' | 'wfh';
 };
 
-const departments = ['All', 'Engineering', 'Design', 'Marketing', 'HR', 'Finance', 'Operations'] as const;
-
-const employees = [
-  { name: 'Budi Hartono', department: 'Engineering' },
-  { name: 'Sari Dewi', department: 'Marketing' },
-  { name: 'Andi Pratama', department: 'Finance' },
-  { name: 'Maya Anggraeni', department: 'Design' },
-  { name: 'Fajar Nugroho', department: 'Engineering' },
-  { name: 'Rina Sari', department: 'HR' },
-  { name: 'Rizky Prasetyo', department: 'Engineering' },
-  { name: 'Dewi Lestari', department: 'HR' },
-  { name: 'Lia Amelia', department: 'Operations' },
-  { name: 'Farhan Maulana', department: 'Engineering' },
-];
-
-function currentMonthEvents(): LeaveEvent[] {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = now.getMonth();
-  const d = (day: number) => new Date(y, m, day).toISOString().slice(0, 10);
-  return [
-    { id: '1', employee: 'Budi Hartono', department: 'Engineering', type: 'Annual Leave', from: d(10), to: d(12) },
-    { id: '2', employee: 'Sari Dewi', department: 'Marketing', type: 'Sick Leave', from: d(14), to: d(14) },
-    { id: '3', employee: 'Andi Pratama', department: 'Finance', type: 'Personal Leave', from: d(16), to: d(17) },
-    { id: '4', employee: 'Maya Anggraeni', department: 'Design', type: 'Annual Leave', from: d(18), to: d(20) },
-    { id: '5', employee: 'Fajar Nugroho', department: 'Engineering', type: 'Annual Leave', from: d(1), to: d(3) },
-    { id: '6', employee: 'Rina Sari', department: 'HR', type: 'Personal Leave', from: d(22), to: d(22) },
-    { id: '7', employee: 'Rizky Prasetyo', department: 'Engineering', type: 'Sick Leave', from: d(24), to: d(24) },
-    { id: '8', employee: 'Dewi Lestari', department: 'HR', type: 'Annual Leave', from: d(26), to: d(28) },
-    { id: '9', employee: 'Lia Amelia', department: 'Operations', type: 'Annual Leave', from: d(27), to: d(29) },
-    { id: '10', employee: 'Farhan Maulana', department: 'Engineering', type: 'Personal Leave', from: d(30), to: d(30) },
-  ];
-}
+const typeColor: Record<string, string> = { 'Annual Leave': 'bg-primary', 'Sick Leave': 'bg-red-500', 'Personal Leave': 'bg-violet-500', 'Maternity Leave': 'bg-pink-500' };
+const typeBadge: Record<string, string> = { 'Annual Leave': 'bg-primary-surface text-primary', 'Sick Leave': 'bg-red-50 text-red-600', 'Personal Leave': 'bg-violet-50 text-violet-600', 'Maternity Leave': 'bg-pink-50 text-pink-600' };
 
 function dateKey(d: Date) {
   return d.toISOString().slice(0, 10);
@@ -116,18 +86,6 @@ function getWeekGrid(monthDate: Date) {
   }
   return days;
 }
-
-const typeColor: Record<LeaveType, string> = {
-  'Annual Leave': 'bg-primary',
-  'Sick Leave': 'bg-red-500',
-  'Personal Leave': 'bg-violet-500',
-};
-
-const typeBadge: Record<LeaveType, string> = {
-  'Annual Leave': 'bg-primary-surface text-primary',
-  'Sick Leave': 'bg-red-50 text-red-600',
-  'Personal Leave': 'bg-violet-50 text-violet-600',
-};
 
 const attendanceStatusMeta: Record<DayRecord['status'], { label: string; color: string }> = {
   present: { label: 'Present', color: 'bg-cta-surface text-cta-hover' },
@@ -226,8 +184,29 @@ export default function CalendarPage() {
   const [department, setDepartment] = useState<string>('All');
   const [employeeFilter, setEmployeeFilter] = useState<string>('All');
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [leaveEvents, setLeaveEvents] = useState<LeaveEvent[]>([]);
+  const [employees, setEmployees] = useState<{ name: string; department: string; id: string }[]>([]);
+  const [attendanceRows, setAttendanceRows] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const allEvents = useMemo(() => currentMonthEvents(), []);
+  const allEvents = leaveEvents;
+  const departments = ['All', ...Array.from(new Set(employees.map((employee) => employee.department)))];
+  useEffect(() => {
+    const year = monthDate.getFullYear();
+    const month = monthDate.getMonth();
+    const from = new Date(year, month, 1).toISOString().slice(0, 10);
+    const to = new Date(year, month + 1, 0).toISOString().slice(0, 10);
+    setLoading(true);
+    Promise.all([
+      api.get('/employees', { params: { status: 'active', per_page: 100 } }),
+      api.get('/leave', { params: { year } }),
+      api.get('/attendance', { params: { from, to, per_page: 100 } }),
+    ]).then(([employeeResponse, leaveResponse, attendanceResponse]) => {
+      setEmployees((employeeResponse.data.items ?? []).map((row: any) => ({ id: row.id, name: row.full_name, department: row.department ?? 'Unassigned' })));
+      setLeaveEvents((leaveResponse.data.items ?? []).map((row: any) => ({ id: row.id, employee: row.employee_name ?? 'Unknown employee', department: row.department ?? 'Unassigned', type: ({ annual: 'Annual Leave', sick: 'Sick Leave', personal: 'Personal Leave', maternity: 'Maternity Leave' } as Record<string, string>)[row.leave_type] ?? 'Personal Leave', from: row.start_date, to: row.end_date })));
+      setAttendanceRows(attendanceResponse.data.items ?? []);
+    }).catch((error: any) => toast(error.response?.data?.detail || 'Unable to load calendar data.', 'error')).finally(() => setLoading(false));
+  }, [monthDate, toast]);
 
   const filteredEvents = useMemo(() => {
     return allEvents.filter((ev) => {
@@ -270,24 +249,9 @@ export default function CalendarPage() {
   const dayAttendance = useCallback(
     (date: Date) => {
       const key = dateKey(date);
-      const attendance: { name: string; department: string; status: DayRecord['status'] }[] = [];
-      for (const emp of filteredEmployees) {
-        const onLeave = (eventsByDate[key] || []).some((ev) => ev.employee === emp.name);
-        if (onLeave) continue;
-
-        const status: DayRecord['status'] =
-          date.getDay() === 0 || date.getDay() === 6
-            ? 'absent'
-            : emp.name.includes('Rina') || emp.name.includes('Farhan')
-            ? 'wfh'
-            : emp.name.includes('Dewi')
-            ? 'late'
-            : 'present';
-        attendance.push({ name: emp.name, department: emp.department, status });
-      }
-      return attendance;
+      return attendanceRows.filter((row: any) => row.date === key).filter((row: any) => filteredEmployees.some((employee) => employee.name === row.name)).map((row: any) => ({ name: row.name, department: row.department, status: (row.status === 'wfh' ? 'wfh' : row.status === 'late' ? 'late' : row.status === 'absent' ? 'absent' : 'present') as DayRecord['status'] }));
     },
-    [filteredEmployees, eventsByDate],
+    [attendanceRows, filteredEmployees],
   );
 
   return (
@@ -321,6 +285,8 @@ export default function CalendarPage() {
           </div>
         }
       />
+
+      {loading && <p className="mb-4 text-sm text-muted">Loading calendar…</p>}
 
       <div className="card mb-6">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">

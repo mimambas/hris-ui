@@ -30,7 +30,7 @@ Fondasi sudah ditingkatkan: tenant/RBAC migration, ownership hardening, settings
 |---|---|---|---|---|
 | Settings | frontend | partial | `settings/page.tsx` | Persistence baru selesai; permission/error/field policy tests belum ada |
 | Reports generation/export | frontend/backend | dummy | `reports/page.tsx`, `reports/[id]/preview/page.tsx` | Hardcoded chart/KPI, fake setTimeout, placeholder CSV, Share/PDF tanpa handler; tidak ada reports API |
-| Calendar | frontend/backend | dummy | `calendar/page.tsx` | Hardcoded employees/events; tidak ada calendar API |
+| Calendar | frontend/backend | partial | `calendar/page.tsx` | Leave/employee/attendance data sekarang load API; event types, range query, holiday/company events, dan export belum ada |
 | Directory | frontend/backend | done | `directory/page.tsx` | Hardcoded roster; tidak ada directory API/DTO |
 | Org chart | frontend/backend | dummy | `org-chart/page.tsx` | Hardcoded teams; add member toast-only; reporting hierarchy belum wired |
 | Employee detail | frontend/backend | done | `employees/[id]/page.tsx` | Route ID/API tidak dipakai; profile/docs/payroll/leave hardcoded; edit/preview/download inert |
