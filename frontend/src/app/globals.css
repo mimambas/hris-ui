@@ -85,49 +85,7 @@
     color-scheme: dark;
   }
 
-  /* Hardcoded light-palette utilities are remapped here so every surface that
-     uses bg-red-50 / bg-amber-50 / text-sky-600 etc. also darkens. */
-  [data-theme="dark"] {
-    .bg-red-50 { background-color: var(--danger-surface); }
-    .bg-red-100 { background-color: var(--danger-surface); }
-    .border-red-200 { border-color: var(--danger-surface); }
-    .border-red-300 { border-color: var(--danger-surface); }
 
-    .bg-amber-50 { background-color: var(--warning-surface); }
-    .bg-amber-100 { background-color: var(--warning-surface); }
-    .border-amber-200 { border-color: var(--warning-surface); }
-    .text-amber-600 { color: var(--warning-text); }
-    .text-amber-700 { color: var(--warning-text); }
-
-    .bg-violet-50 { background-color: var(--violet-surface); }
-    .text-violet-600 { color: var(--violet-text); }
-    .text-violet-700 { color: var(--violet-text); }
-
-    .bg-pink-50 { background-color: var(--pink-surface); }
-    .text-pink-600 { color: var(--pink-text); }
-
-    .bg-sky-50 { background-color: var(--sky-surface); }
-    .text-sky-600 { color: var(--sky-text); }
-
-    .bg-emerald-50 { background-color: var(--cta-surface); }
-    .text-emerald-600 { color: var(--cta); }
-
-    .bg-rose-50 { background-color: var(--rose-surface); }
-    .text-rose-600 { color: var(--rose-text); }
-
-    .bg-indigo-50 { background-color: var(--primary-surface); }
-    .text-indigo-600 { color: var(--primary); }
-
-    .bg-red-500 { background-color: #dc2626; }
-    .bg-red-600 { background-color: #b91c1c; }
-    .bg-violet-500 { background-color: #7c3aed; }
-    .bg-pink-500 { background-color: #db2777; }
-    .bg-sky-500 { background-color: #0284c7; }
-    .bg-white { background-color: var(--canvas); }
-    .text-white { color: var(--ink); }
-    .text-indigo-200 { color: var(--muted); }
-    .text-indigo-100 { color: var(--muted); }
-  }
 
   * { box-sizing: border-box; }
 
@@ -273,3 +231,37 @@
     to { transform: scale(1); opacity: 1; }
   }
 }
+
+/* ==========================================================================
+   Dark-mode remaps for hardcoded light-palette utilities.
+   These are intentionally UNLAYERED so they override Tailwind's
+   `utilities` layer (a rule inside `@layer base` would lose).
+   ========================================================================== */
+/* Hardcoded light-palette utilities are remapped here so every surface that
+uses bg-red-50 / bg-amber-50 / text-sky-600 etc. also darkens.
+Flat selectors are used because these are plain CSS, not a Tailwind layer. */
+[data-theme="dark"] .bg-red-50 { background-color: var(--danger-surface); }
+[data-theme="dark"] .bg-red-100 { background-color: var(--danger-surface); }
+[data-theme="dark"] .border-red-200, [data-theme="dark"] .border-red-300 { border-color: var(--danger-surface); }
+[data-theme="dark"] .bg-amber-50, [data-theme="dark"] .bg-amber-100 { background-color: var(--warning-surface); }
+[data-theme="dark"] .border-amber-200 { border-color: var(--warning-surface); }
+[data-theme="dark"] .text-amber-600, [data-theme="dark"] .text-amber-700 { color: var(--warning-text); }
+[data-theme="dark"] .bg-violet-50 { background-color: var(--violet-surface); }
+[data-theme="dark"] .text-violet-600, [data-theme="dark"] .text-violet-700 { color: var(--violet-text); }
+[data-theme="dark"] .bg-pink-50 { background-color: var(--pink-surface); }
+[data-theme="dark"] .text-pink-600 { color: var(--pink-text); }
+[data-theme="dark"] .bg-sky-50 { background-color: var(--sky-surface); }
+[data-theme="dark"] .text-sky-600 { color: var(--sky-text); }
+[data-theme="dark"] .bg-emerald-50 { background-color: var(--cta-surface); }
+[data-theme="dark"] .text-emerald-600 { color: var(--cta); }
+[data-theme="dark"] .bg-rose-50 { background-color: var(--rose-surface); }
+[data-theme="dark"] .text-rose-600 { color: var(--rose-text); }
+[data-theme="dark"] .bg-indigo-50 { background-color: var(--primary-surface); }
+[data-theme="dark"] .text-indigo-600 { color: var(--primary); }
+[data-theme="dark"] .bg-red-500 { background-color: #dc2626; }
+[data-theme="dark"] .bg-red-600 { background-color: #b91c1c; }
+[data-theme="dark"] .bg-violet-500 { background-color: #7c3aed; }
+[data-theme="dark"] .bg-pink-500 { background-color: #db2777; }
+[data-theme="dark"] .bg-sky-500 { background-color: #0284c7; }
+[data-theme="dark"] .bg-white { background-color: var(--canvas); }
+[data-theme="dark"] .text-indigo-200, [data-theme="dark"] .text-indigo-100 { color: var(--muted); }
