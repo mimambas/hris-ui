@@ -19,7 +19,7 @@ type DashboardData = {
 type Kpi = { label: string; value: string; change: string; trend: 'up' | 'down'; icon: typeof Users; color: string; detail: string; href: string };
 
 const EMPTY_DATA: DashboardData = { total_employees: 0, active_employees: 0, pending_leave: 0, department_headcount: [], headcount_trend: [] };
-const tooltipStyle = { fontSize: 12, borderRadius: 12, border: '1px solid #e2e8f0' };
+const tooltipStyle = { fontSize: 12, borderRadius: 12, border: '1px solid var(--hairline)', backgroundColor: 'var(--canvas)', color: 'var(--ink)' };
 
 function DrilldownModal({ item, onClose }: { item: Exclude<Drilldown, null>; onClose: () => void }) {
   return (
