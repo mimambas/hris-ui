@@ -57,3 +57,10 @@
 - Removed stale random audit fixtures and hardcoded KPI values.
 - API audit rows now map category to icon/color and refetch when search/category changes.
 - Verified production smoke test, TypeScript, lint, build, and backend tests.
+
+### 2026-09-26 — Org chart add member persistence
+
+- Org Chart "Add team member" now POSTs a real employee with reporting_to and department_id resolved from API data.
+- Added required start date field, since employee creation requires join_date.
+- Removed the toast-only success path; errors surface from the API.
+- Typecheck, lint, build, and production smoke tests pass.

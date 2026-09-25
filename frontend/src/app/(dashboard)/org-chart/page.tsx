@@ -23,6 +23,7 @@ type Team = {
   count: number;
   color: string;
   department: string;
+  department_id?: string;
   children?: string[];
   description: string;
   members: TeamMember[];
@@ -52,14 +53,15 @@ export default function OrgChartPage() {
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { toast } = useToast();
   useEffect(() => {
-    api.get('/employees', { params: { per_page: 100 } }).then((response) => setServerEmployees(response.data.items ?? [])).catch(() => toast('Unable to load organization chart data.', 'error')).finally(() => setLoading(false));
+    Promise.all([api.get('/employees', { params: { per_page: 100 } }), api.get('/departments')]).then(([employeeResponse, departmentResponse]) => { setServerEmployees(employeeResponse.data.items ?? []); const map: Record<string, string> = {}; for (const department of departmentResponse.data.items ?? []) map[department.name] = department.id; setDepartmentIds(map); }).catch(() => toast('Unable to load organization chart data.', 'error')).finally(() => setLoading(false));
   }, [toast]);
 
   // Add member modal state
   const [showAddMember, setShowAddMember] = useState(false);
-  const [newMember, setNewMember] = useState({ name: '', role: '', department: '', reportsTo: '' });
+  const [newMember, setNewMember] = useState({ name: '', role: '', department: '', reportsTo: '', joinDate: '' });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [serverEmployees, setServerEmployees] = useState<any[]>([]);
+  const [departmentIds, setDepartmentIds] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
   const teams = useMemo<Team[]>(() => {
@@ -149,7 +151,7 @@ export default function OrgChartPage() {
   const reportsToOptions = teams.map((t) => t.lead);
 
   const resetForm = () => {
-    setNewMember({ name: '', role: '', department: '', reportsTo: '' });
+    setNewMember({ name: '', role: '', department: '', reportsTo: '', joinDate: '' });
     setFormErrors({});
   };
 
@@ -159,15 +161,33 @@ export default function OrgChartPage() {
     if (!newMember.role.trim()) errors.role = 'Role is required';
     if (!newMember.department) errors.department = 'Department is required';
     if (!newMember.reportsTo) errors.reportsTo = 'Reports-to is required';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(newMember.joinDate)) errors.joinDate = 'Start date is required';
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmitMember = () => {
+  const handleSubmitMember = async () => {
     if (!validateForm()) return;
-    toast(`Team member "${newMember.name}" added successfully.`, 'success');
-    setShowAddMember(false);
-    resetForm();
+    const reporting = serverEmployees.find((employee) => employee.full_name === newMember.reportsTo);
+    const department = newMember.department;
+    const departmentId = departmentIds[department];
+    if (!reporting || !departmentId) { toast('Could not resolve the reporting or department selection.', 'error'); return; }
+    try {
+      await api.post('/employees', {
+        full_name: newMember.name.trim(),
+        join_date: newMember.joinDate,
+        department_id: departmentId,
+        position_id: null,
+        reporting_to: reporting.id,
+        employment_type: 'full-time',
+        employment_status: 'contract',
+      });
+      const response = await api.get('/employees', { params: { per_page: 100 } });
+      setServerEmployees(response.data.items ?? []);
+      toast(`Team member "${newMember.name}" added successfully.`, 'success');
+      setShowAddMember(false);
+      resetForm();
+    } catch (error: any) { toast(error.response?.data?.detail || 'Unable to add team member.', 'error'); }
   };
 
   /* ---- Profile tooltip for a team ---- */
@@ -572,6 +592,21 @@ export default function OrgChartPage() {
                   ))}
                 </select>
                 {formErrors.department && <p className="text-[11px] text-semantic-down mt-1">{formErrors.department}</p>}
+              </div>
+
+              {/* Start date */}
+              <div>
+                <label htmlFor="member-join" className="block text-xs font-semibold text-ink mb-1.5">
+                  Start date <span className="text-semantic-down">*</span>
+                </label>
+                <input
+                  id="member-join"
+                  type="date"
+                  value={newMember.joinDate}
+                  onChange={(e) => setNewMember((p) => ({ ...p, joinDate: e.target.value }))}
+                  className={`input-field ${formErrors.joinDate ? 'border-semantic-down focus:border-semantic-down focus:ring-semantic-down/15' : ''}`}
+                />
+                {formErrors.joinDate && <p className="text-[11px] text-semantic-down mt-1">{formErrors.joinDate}</p>}
               </div>
 
               {/* Reports to */}

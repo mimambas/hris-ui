@@ -32,7 +32,7 @@ Fondasi sudah ditingkatkan: tenant/RBAC migration, ownership hardening, settings
 | Reports generation/export | frontend/backend | partial | `reports/page.tsx`, `reports/[id]/preview/page.tsx` | Charts, KPI, aggregation, payroll/attendance trends, dan preview kini memakai data live; Report history persistence, live CSV/JSON exporter, live preview, dan Share/link-copy tersedia; PDF/XLSX binary exporter masih belum dibuat |
 | Calendar | frontend/backend | partial | `calendar/page.tsx` | Leave/employee/attendance data sekarang load API; event types, range query, holiday/company events, dan export belum ada |
 | Directory | frontend/backend | done | `directory/page.tsx` | Hardcoded roster; tidak ada directory API/DTO |
-| Org chart | frontend/backend | partial | `org-chart/page.tsx`, `api/employees/route.ts` | Team cards sekarang dikelompokkan dari employee API; add-member persistence dan reporting hierarchy update belum lengkap |
+| Org chart | frontend/backend | partial | `org-chart/page.tsx`, `api/employees/route.ts` | Team cards dari employee API; add-member kini memanggil `POST /api/employees` dengan `reporting_to` dan department ID; zoom/collapse tree level penuh belum ada |
 | Employee detail | frontend/backend | done | `employees/[id]/page.tsx` | Route ID/API tidak dipakai; profile/docs/payroll/leave hardcoded; edit/preview/download inert |
 | Payroll detail | frontend/backend | done | `payroll/[id]/page.tsx`, `api/payroll/[id]/route.ts` | Detail memakai API; export saat ini CSV, bukan PDF binary |
 | Onboarding checklist standalone | frontend/backend | partial | `onboarding/checklist/page.tsx`, `api/checklist/*` | Template API GET/POST/PATCH/DELETE dan UI persistence tersedia; association ke onboarding employee belum lengkap |
