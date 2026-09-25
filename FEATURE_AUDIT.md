@@ -38,7 +38,7 @@ Fondasi sudah ditingkatkan: tenant/RBAC migration, ownership hardening, settings
 | Onboarding checklist standalone | frontend/backend | dummy | `onboarding/checklist/page.tsx` | Local-only schema berbeda dari onboarding API |
 | Self-service payslip | frontend/backend | done | `self-service/page.tsx` | `serverPayslips=[]`; payroll self-service endpoint missing |
 | Leave balance | frontend/backend | done | `leave/page.tsx`, `leave_balances` table | Balance hardcoded; GET balance API dan approval accounting missing |
-| Document requests | frontend/backend | dummy | `documents/page.tsx` RequestDocsModal | setTimeout/toast only; no `document_requests` table/API |
+| Document requests | frontend/backend | partial | `documents/page.tsx` RequestDocsModal | Persisted `document_requests` schema/API and modal POST now tersedia; employee submission/status workflow and delivery notifications belum ada |
 | Document policy templates | frontend | dummy | `documents/page.tsx` PolicyTemplatesModal | Placeholder text download |
 | Employee bulk email | frontend/backend | dummy | `employees/page.tsx` | Toast-only; no provider/outbox/email API |
 | Audit UI dead fixtures/KPI | frontend | partial | `audit-log/page.tsx` | Random mock fixtures and hardcoded KPI remain; API mapping/filter fixes needed |

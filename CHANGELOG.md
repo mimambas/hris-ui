@@ -38,3 +38,9 @@
 - Added `checklist_templates` schema and tenant-scoped checklist API.
 - Connected standalone Onboarding Checklist load/add/status/delete actions to API.
 - Removed hardcoded task fixture source of truth; verified TypeScript, lint, build, and production smoke tests.
+
+### 2026-09-25 — Document request persistence
+
+- Added tenant-scoped `document_requests` schema and GET/POST API.
+- Document request modal now loads active employees and persists batch requests instead of using a fake timeout.
+- Typecheck, lint, build, and production smoke tests pass.

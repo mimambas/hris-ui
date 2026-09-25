@@ -91,24 +91,22 @@ function RequestDocsModal({ onClose }: { onClose: () => void }) {
   const { toast } = useToast();
   useEscapeKey(onClose);
   const [selectedEmps, setSelectedEmps] = useState<string[]>([]);
+  const [employees, setEmployees] = useState<{ id: string; full_name: string }[]>([]);
   const [docTypes, setDocTypes] = useState<string[]>([]);
   const [dueDate, setDueDate] = useState('');
   const [sending, setSending] = useState(false);
+  useEffect(() => { api.get('/employees', { params: { status: 'active', per_page: 100 } }).then((response) => setEmployees(response.data.items ?? [])).catch(() => toast('Unable to load employees.', 'error')); }, [toast]);
 
   const allTypes = ['KTP', 'NPWP', 'BPJS Certificate', 'SKCK', 'Surat Keterangan Sehat', 'Employment Agreement', 'NDA'];
 
-  const toggleEmp = (name: string) => setSelectedEmps((cur) => cur.includes(name) ? cur.filter((n) => n !== name) : [...cur, name]);
+  const toggleEmp = (id: string) => setSelectedEmps((cur) => cur.includes(id) ? cur.filter((n) => n !== id) : [...cur, id]);
   const toggleType = (t: string) => setDocTypes((cur) => cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedEmps.length === 0 || docTypes.length === 0) return;
     setSending(true);
-    setTimeout(() => {
-      setSending(false);
-      toast(`Document request sent to ${selectedEmps.length} employee${selectedEmps.length > 1 ? 's' : ''}.`, 'success');
-      onClose();
-    }, 1000);
+    try { await api.post('/documents/requests', { employee_ids: selectedEmps, document_types: docTypes, due_date: dueDate || null }); toast(`Document request sent to ${selectedEmps.length} employee${selectedEmps.length > 1 ? 's' : ''}.`, 'success'); onClose(); } catch (error: any) { toast(error.response?.data?.detail || 'Unable to send document request.', 'error'); } finally { setSending(false); }
   };
 
   return (
@@ -123,8 +121,8 @@ function RequestDocsModal({ onClose }: { onClose: () => void }) {
           <div>
             <p className="text-sm font-semibold text-ink mb-2">Select employees <span className="text-semantic-down">*</span></p>
             <div className="flex flex-wrap gap-2">
-              {employees.map((name) => (
-                <button key={name} type="button" onClick={() => toggleEmp(name)} className={`min-h-9 px-3 rounded-pill text-xs font-semibold transition-colors ${selectedEmps.includes(name) ? 'bg-primary text-white' : 'bg-surface-strong text-muted hover:text-ink'}`}>{name}</button>
+              {employees.map((employee) => (
+                <button key={employee.id} type="button" onClick={() => toggleEmp(employee.id)} className={`min-h-9 px-3 rounded-pill text-xs font-semibold transition-colors ${selectedEmps.includes(employee.id) ? 'bg-primary text-white' : 'bg-surface-strong text-muted hover:text-ink'}`}>{employee.full_name}</button>
               ))}
             </div>
             {selectedEmps.length === 0 && <p className="text-[11px] text-muted mt-2">Select at least one employee</p>}
