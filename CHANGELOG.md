@@ -18,3 +18,10 @@
 - Applied the helper to Employees, Departments, Expenses, Documents, Recruitment, and Audit Log search filters.
 - Added `frontend/scripts/test-query.mjs` covering wildcard and filter-injection cases.
 - Verified query tests, production smoke tests, TypeScript, and ESLint.
+
+### 2026-09-25 — Reports live data
+
+- Added `/api/reports` aggregating headcount, attendance, leave, and payroll from Supabase, including 6-month payroll and attendance trends.
+- Reports page now loads KPI and chart series from the API instead of hardcoded fixtures.
+- Preview modal receives live series; removed mock target bars and dead recent-report fixtures.
+- Added `reports aggregation` and `reports trends present` smoke assertions; all smoke tests pass after deploy.
