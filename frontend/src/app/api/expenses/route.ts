@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { apiError, getSupabaseAdmin, requireUser } from '@/lib/server/auth';
+import { orIlike } from '@/lib/server/query';
 
 const CATEGORIES = ['Travel & Transport', 'Client Entertainment', 'Software & Tools', 'Office Supplies', 'Meals & Entertainment', 'Training & Development'];
 
@@ -18,7 +19,7 @@ export async function GET(request: Request) {
     const page = Math.max(1, Number(searchParams.get('page') || 1)); const perPage = Math.min(100, Math.max(1, Number(searchParams.get('per_page') || 100)));
     const client = getSupabaseAdmin(); let query = client.from('expense_claims').select('*, employee:employee_id(full_name,departments(name)), reviewer:reviewed_by(email)', { count: 'exact' });
     if (!elevated) { if (!user.employee_id) return NextResponse.json({ detail: 'Your user account is not linked to an employee record' }, { status: 422 }); query = query.eq('employee_id', user.employee_id); }
-    if (search) query = query.or(`claim_number.ilike.%${search}%,description.ilike.%${search}%`);
+    if (search) query = query.or(orIlike(search, ['claim_number', 'description']));
     if (category && category !== 'All') query = query.eq('category', category);
     if (status && status !== 'all') query = query.eq('status', status);
     const from = (page - 1) * perPage; const { data, count, error } = await query.order('created_at', { ascending: false }).range(from, from + perPage - 1);

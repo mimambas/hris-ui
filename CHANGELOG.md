@@ -11,3 +11,10 @@
 - Backend test environment required Python 3.11 dependency installation from `backend/requirements.txt`; `pytest` now passes 2 tests.
 - API review found raw user input interpolated into PostgREST `.or()` filters in Employees, Departments, Expenses, Documents, Recruitment, and Audit Log. These remain a follow-up hardening item: add shared escaping or switch to safe independent filters before declaring API security complete.
 - API review found pages without API wiring: Org Chart, Reports, and standalone Onboarding Checklist. These remain documented gaps in `FEATURE_AUDIT.md`.
+
+### 2026-09-25 — API query hardening
+
+- Added `frontend/src/lib/server/query.ts` to escape PostgREST search values, including `%`, `_`, backslash, commas, and parentheses.
+- Applied the helper to Employees, Departments, Expenses, Documents, Recruitment, and Audit Log search filters.
+- Added `frontend/scripts/test-query.mjs` covering wildcard and filter-injection cases.
+- Verified query tests, production smoke tests, TypeScript, and ESLint.

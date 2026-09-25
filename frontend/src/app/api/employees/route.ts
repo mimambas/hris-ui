@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { apiError, getSupabaseAdmin, requireAdmin, requireUser } from '@/lib/server/auth';
+import { orIlike } from '@/lib/server/query';
 
 const PAGE_SIZE_DEFAULT = 10;
 
@@ -37,7 +38,7 @@ export async function GET(request: Request) {
     const departmentId = searchParams.get('department_id');
     const departmentName = searchParams.get('department');
     let query = client.from('employees').select('*, departments(name), positions(title)', { count: 'exact' }).eq('organization_id', user.organization_id);
-    if (search) query = query.or(`full_name.ilike.%${search}%,employee_id.ilike.%${search}%`);
+    if (search) query = query.or(orIlike(search, ['full_name', 'employee_id']));
     if (status && status !== 'all') query = query.eq('status', status);
     if (departmentId && departmentId !== 'all') query = query.eq('department_id', departmentId);
     if (departmentName && departmentName !== 'All') {

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { apiError, getSupabaseAdmin, requireAdmin, requireUser } from '@/lib/server/auth';
+import { orIlike } from '@/lib/server/query';
 
 function normalizeDepartment(row: any, employeeCount = 0) {
   return {
@@ -25,7 +26,7 @@ export async function GET(request: Request) {
     const search = searchParams.get('search')?.trim();
     const client = getSupabaseAdmin();
     let query = client.from('departments').select('*, parent:parent_id(name)', { count: 'exact' }).eq('organization_id', user.organization_id);
-    if (search) query = query.or(`name.ilike.%${search}%,code.ilike.%${search}%`);
+    if (search) query = query.or(orIlike(search, ['name', 'code']));
     const { data, count, error } = await query.order('name', { ascending: true });
     if (error) throw error;
     const rows = data ?? [];
