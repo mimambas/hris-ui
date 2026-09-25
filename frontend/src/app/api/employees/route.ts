@@ -16,6 +16,7 @@ function normalizeEmployee(row: any) {
     employment_type: row.employment_type,
     department_id: row.department_id,
     position_id: row.position_id,
+    reporting_to: row.reporting_to ?? null,
     status: row.status,
     branch: row.branch,
     base_salary: row.base_salary,

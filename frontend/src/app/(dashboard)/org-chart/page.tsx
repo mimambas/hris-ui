@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState, useRef, useCallback } from 'react';
+import { useMemo, useState, useRef, useCallback, useEffect } from 'react';
+import api from '@/lib/api';
 import {
   Users, ChevronDown, GitBranch, UserRound, ZoomIn, ZoomOut,
   Maximize2, Search, X, UserPlus
@@ -31,125 +32,11 @@ type Team = {
 /*  Department list & pill definitions                                 */
 /* ------------------------------------------------------------------ */
 
-const DEPARTMENTS = ['All', 'Engineering', 'Design', 'Marketing', 'HR', 'Finance', 'Operations'] as const;
+const DEPARTMENTS = ['All'] as const;
 
 /* ------------------------------------------------------------------ */
 /*  Mock data                                                          */
 /* ------------------------------------------------------------------ */
-
-const teams: Team[] = [
-  {
-    name: 'Human Resources',
-    lead: 'Rina Sari',
-    initials: 'RS',
-    count: 24,
-    color: 'bg-primary-surface text-primary',
-    department: 'HR',
-    description: 'People, culture, and workplace operations',
-    members: [
-      { name: 'Rina Sari', role: 'Head of HR' },
-      { name: 'Dewi Lestari', role: 'HR Manager' },
-      { name: 'Fajar Nugroho', role: 'Recruiter' },
-      { name: 'Lia Permata', role: 'People Operations' },
-      { name: 'Rizky Aditya', role: 'Learning & Development' },
-      { name: 'Nina Salsabila', role: 'HR Analyst' },
-      { name: 'Tommy Wijaya', role: 'Talent Acquisition' },
-      { name: 'Putri Ayu', role: 'Compensation Specialist' },
-    ],
-  },
-  {
-    name: 'Engineering',
-    lead: 'Budi Hartono',
-    initials: 'BH',
-    count: 186,
-    color: 'bg-cta-surface text-cta-hover',
-    department: 'Engineering',
-    children: ['Platform Engineering', 'Mobile Engineering', 'Web Engineering'],
-    description: 'Product technology and infrastructure',
-    members: [
-      { name: 'Budi Hartono', role: 'VP of Engineering' },
-      { name: 'Arif Rahman', role: 'Senior Backend Engineer' },
-      { name: 'Sinta Kusuma', role: 'Frontend Lead' },
-      { name: 'Dimas Prayogo', role: 'DevOps Engineer' },
-      { name: 'Rina Oktaviani', role: 'QA Lead' },
-      { name: 'Hendra Wijaya', role: 'Data Engineer' },
-      { name: 'Galih Paramitha', role: 'Mobile Engineer' },
-      { name: 'Vina Maharani', role: 'Platform Engineer' },
-      { name: 'Yoga Pratama', role: 'Security Engineer' },
-      { name: 'Ayu Oktaviani', role: 'Backend Developer' },
-    ],
-  },
-  {
-    name: 'Product & Design',
-    lead: 'Maya Anggraeni',
-    initials: 'MA',
-    count: 48,
-    color: 'bg-violet-50 text-violet-600',
-    department: 'Design',
-    description: 'Product strategy, research, and design',
-    members: [
-      { name: 'Maya Anggraeni', role: 'Head of Product & Design' },
-      { name: 'Krisna Aditya', role: 'Senior Product Designer' },
-      { name: 'Yoga Saputra', role: 'UX Researcher' },
-      { name: 'Mita Puspita', role: 'UI Designer' },
-      { name: 'Bimo Aji', role: 'Product Manager' },
-      { name: 'Ratna Sari', role: 'Interaction Designer' },
-    ],
-  },
-  {
-    name: 'Finance',
-    lead: 'Andi Pratama',
-    initials: 'AP',
-    count: 32,
-    color: 'bg-amber-50 text-accent-yellow',
-    department: 'Finance',
-    description: 'Financial planning and accounting',
-    members: [
-      { name: 'Andi Pratama', role: 'Finance Director' },
-      { name: 'Lina Marlina', role: 'Senior Accountant' },
-      { name: 'Rian Firmansyah', role: 'Financial Analyst' },
-      { name: 'Sari Wulandari', role: 'AP/AR Specialist' },
-      { name: 'Hendro Setiawan', role: 'Treasury Manager' },
-      { name: 'Devi Anggraini', role: 'Tax Specialist' },
-    ],
-  },
-  {
-    name: 'Marketing',
-    lead: 'Sari Dewi',
-    initials: 'SD',
-    count: 56,
-    color: 'bg-pink-50 text-pink-600',
-    department: 'Marketing',
-    description: 'Brand, growth, and communications',
-    members: [
-      { name: 'Sari Dewi', role: 'Head of Marketing' },
-      { name: 'Bagus Kurniawan', role: 'Content Strategist' },
-      { name: 'Mia Fitriani', role: 'SEO Specialist' },
-      { name: 'Raka Sudarma', role: 'Growth Marketer' },
-      { name: 'Anisa Rahma', role: 'Brand Manager' },
-      { name: 'Fikri Hidayat', role: 'Social Media Lead' },
-      { name: 'Nadia Safira', role: 'Marketing Analyst' },
-    ],
-  },
-  {
-    name: 'Customer Success',
-    lead: 'Yuni Kartika',
-    initials: 'YK',
-    count: 94,
-    color: 'bg-sky-50 text-sky-600',
-    department: 'Operations',
-    description: 'Customer experience and support',
-    members: [
-      { name: 'Yuni Kartika', role: 'VP of Customer Success' },
-      { name: 'Eka Pramesti', role: 'Support Team Lead' },
-      { name: 'Gilang Ramadhan', role: 'Account Executive' },
-      { name: 'Novi Susanti', role: 'Customer Onboarding' },
-      { name: 'Fajar Sidik', role: 'Technical Support' },
-      { name: 'Rani Permata', role: 'Success Manager' },
-      { name: 'Indra Gunawan', role: 'Support Engineer' },
-    ],
-  },
-];
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
@@ -164,11 +51,28 @@ export default function OrgChartPage() {
   const [hoveredTeam, setHoveredTeam] = useState<string | null>(null);
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { toast } = useToast();
+  useEffect(() => {
+    api.get('/employees', { params: { per_page: 100 } }).then((response) => setServerEmployees(response.data.items ?? [])).catch(() => toast('Unable to load organization chart data.', 'error')).finally(() => setLoading(false));
+  }, [toast]);
 
   // Add member modal state
   const [showAddMember, setShowAddMember] = useState(false);
   const [newMember, setNewMember] = useState({ name: '', role: '', department: '', reportsTo: '' });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [serverEmployees, setServerEmployees] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const teams = useMemo<Team[]>(() => {
+    const groups = new Map<string, any[]>();
+    for (const employee of serverEmployees) {
+      const department = employee.department ?? 'Unassigned';
+      groups.set(department, [...(groups.get(department) ?? []), employee]);
+    }
+    return Array.from(groups.entries()).map(([department, members], index) => {
+      const lead = members.find((member) => !member.reporting_to) ?? members[0];
+      return { name: department, lead: lead?.full_name ?? 'Unassigned', initials: (lead?.full_name ?? 'U').split(/\s+/).map((part: string) => part[0]).join('').slice(0, 2).toUpperCase(), count: members.length, color: ['bg-primary-surface text-primary', 'bg-cta-surface text-cta-hover', 'bg-violet-50 text-violet-600', 'bg-amber-50 text-accent-yellow'][index % 4], department, description: `${department} organization`, members: members.map((member) => ({ name: member.full_name, role: member.position ?? '—' })) };
+    });
+  }, [serverEmployees]);
 
   /* ---- Filtering logic ---- */
   const filtered = useMemo(() => {
@@ -241,7 +145,7 @@ export default function OrgChartPage() {
     );
 
   /* ---- Add member form helpers ---- */
-  const departmentOptions = ['Engineering', 'Design', 'Marketing', 'HR', 'Finance', 'Operations'];
+  const departmentOptions = Array.from(new Set(teams.map((team) => team.department)));
   const reportsToOptions = teams.map((t) => t.lead);
 
   const resetForm = () => {
@@ -306,7 +210,7 @@ export default function OrgChartPage() {
 
   /* ---- Render ---- */
   return (
-    <div>
+    <div>{loading && <p className="mb-4 text-sm text-muted">Loading organization data…</p>}
       <ModuleHeader
         eyebrow="Organization"
         title="Organization Chart"
@@ -325,7 +229,7 @@ export default function OrgChartPage() {
 
       {/* -------- Department filter pills -------- */}
       <div className="mb-4 flex flex-wrap gap-2">
-        {DEPARTMENTS.map((dept) => (
+        {['All', ...departmentOptions].map((dept) => (
           <button
             key={dept}
             onClick={() => setActiveDepartment(dept)}
