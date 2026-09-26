@@ -29,7 +29,7 @@ Fondasi sudah ditingkatkan: tenant/RBAC migration, ownership hardening, settings
 | Fitur | Modul | Status | Referensi | Gap |
 |---|---|---|---|---|
 | Settings | frontend | done | `settings/page.tsx` | Persistence, permission denial, invalid payload, dan size validation telah diuji smoke production |
-| Reports generation/export | frontend/backend | partial | `reports/page.tsx`, `reports/[id]/preview/page.tsx` | Charts, KPI, aggregation, payroll/attendance trends, dan preview kini memakai data live; Report history persistence, live CSV/JSON exporter, live preview, dan Share/link-copy tersedia; PDF binary exporter sekarang tersedia; XLSX binary exporter masih belum dibuat |
+| Reports generation/export | frontend/backend | partial | `reports/page.tsx`, `reports/[id]/preview/page.tsx` | Charts, KPI, aggregation, payroll/attendance trends, dan preview kini memakai data live; Report history persistence, live CSV/JSON exporter, live preview, dan Share/link-copy tersedia; PDF dan XLSX binary exporter sekarang tersedia; preview, CSV/JSON, history, Share, dan download smoke coverage tersedia |
 | Calendar | frontend/backend | partial | `calendar/page.tsx` | Leave/employee/attendance data sekarang load API; event types, range query, holiday/company events, dan export belum ada |
 | Directory | frontend/backend | done | `directory/page.tsx` | Hardcoded roster; tidak ada directory API/DTO |
 | Org chart | frontend/backend | partial | `org-chart/page.tsx`, `api/employees/route.ts` | Team cards, member counts, employee reporting metadata, dan add-member memakai employee API; zoom/pan/collapse tree 8 level dan full hierarchy visualization belum ada |

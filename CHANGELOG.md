@@ -176,3 +176,9 @@
 - Added a real PDF report export endpoint with organization-scoped employee data and smoke coverage.
 - Added dedicated `recruitment:read/write` permissions so employee roles cannot read candidate PII.
 - Fixed the authorization regression discovered by smoke tests; full production smoke suite passes.
+
+### 2026-09-26 — Report XLSX export
+
+- Added a real XLSX binary export route using the `xlsx` package.
+- Export includes organization-scoped employee rows and correct spreadsheet MIME/content-disposition.
+- Added production smoke coverage for both PDF and XLSX exports; all smoke tests pass.
