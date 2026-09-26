@@ -106,6 +106,9 @@ check('payroll statutory golden rules', Boolean(payrollRules));
   check('invalid refresh rejected', refreshed.status === 401);
 }
 
+const health = await fetch(`${BASE}/api/health`);
+check('health endpoint ready', health.status === 200 || health.status === 503);
+
 const reports = await call(adminToken, '/api/reports?range=This month');
 check('reports aggregation', reports.status === 200 && reports.data?.kpis && Array.isArray(reports.data?.headcount_by_department));
 check('reports trends present', Array.isArray(reports.data?.payroll_trend) && Array.isArray(reports.data?.attendance_trend));

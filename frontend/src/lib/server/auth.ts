@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { jwtVerify, type JWTPayload } from 'jose';
+import { logger } from './logger';
 
 export type AuthUser = { id: string; email: string; role: string; is_active: boolean; employee_id: string | null; organization_id: string; permissions: string[] };
 
@@ -57,6 +58,6 @@ export function apiError(error: unknown) {
   const message = error instanceof Error ? error.message : '';
   if (message === 'UNAUTHORIZED') return Response.json({ detail: 'Not authenticated' }, { status: 401 });
   if (message === 'FORBIDDEN') return Response.json({ detail: 'Insufficient permissions' }, { status: 403 });
-  console.error('API error:', error);
+  logger.error('api_error', { detail: message || 'unknown' });
   return Response.json({ detail: 'Internal server error' }, { status: 500 });
 }
