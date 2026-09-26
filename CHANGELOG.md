@@ -206,3 +206,9 @@
 - Added tenant-scoped `email_outbox` and `/api/employees/bulk-email` queue/list API.
 - Bulk email UI now queues messages and explicitly reports that no provider is configured (does not claim delivery).
 - Added smoke coverage for admin queue success and employee permission denial.
+
+### 2026-09-26 — XLSX employee import preview
+
+- Employee import modal now accepts CSV, XLSX, and XLS via the existing `xlsx` dependency.
+- First worksheet is parsed into the same validation preview before batch API import.
+- Typecheck and smoke tests pass.
