@@ -182,8 +182,8 @@ check('empty authorization rejected', !emptyAuthorization || emptyAuthorization.
 const notify = await call(adminToken, '/api/notifications', { method: 'POST', body: JSON.stringify({ title: `Smoke delivery ${Date.now()}`, description: 'Outbox smoke notification', category: 'system' }) });
 check('notification create', notify.status === 201 && notify.data?.id);
 if (notify.data?.id) {
-  const delivery = await call(adminToken, '/api/notifications/deliveries', { method: 'POST', body: JSON.stringify({ notification_id: notify.data.id, channel: 'in_app' }) });
-  check('notification in_app delivery recorded', delivery.status === 201 && delivery.data?.status === 'delivered');
+  const delivery = await call(adminToken, '/api/notifications/deliveries', { method: 'POST', body: JSON.stringify({ notification_id: notify.data.id, channel: 'email' }) });
+  check('notification email delivery queued', delivery.status === 201 && delivery.data?.status === 'pending');
   const deliveryRetry = await call(adminToken, `/api/notifications/deliveries/${delivery.data.id}/retry`, { method: 'POST' });
 check('notification delivery retry', deliveryRetry.status === 200 && deliveryRetry.data?.attempts >= 1);
 
