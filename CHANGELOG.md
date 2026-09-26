@@ -282,3 +282,9 @@
 - Added `user_sessions` table, login jti registration, refresh rotation, requireUser revocation checks, and `/api/auth/logout`.
 - Added smoke assertions for logout revocation and invalid refresh tokens.
 - Added pure payroll statutory helpers and golden tests for PTKP, PPh21 progressive brackets, BPJS caps, THR, overtime, and net-pay invariants.
+
+### 2026-09-26 — Self-service overview live data
+
+- Removed hardcoded self-service KPI and recent-activity fixtures.
+- Overview now derives leave balance, attendance rate, pending leave, payslip count, and activity from loaded server data.
+- Marked Permission enforcement as done after confirming zero remaining `requireAdmin(user)` route guards.
