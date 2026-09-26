@@ -165,3 +165,8 @@
 - Added assertions for unauthenticated, forged-token, and empty-authorization rejection.
 - Document requests verified by own-employee scoping rather than a blanket 403 (employees may legitimately read their own).
 - Marked Tenant organization foundation and Tenant read/write scope as done in the feature audit.
+
+### 2026-09-26 — Recruitment permission slice
+
+- Replaced coarse `requireAdmin()` with `requirePermission(employee:read/write)` across candidate, vacancy, note, and interview routes.
+- Existing role/tenant authorization smoke matrix and production smoke tests pass.
