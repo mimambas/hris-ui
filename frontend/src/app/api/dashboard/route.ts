@@ -7,24 +7,24 @@ const RANGES = ['This month', 'Last quarter', 'This year'] as const;
 
 export async function GET(request: Request) {
   try {
-    await requireUser(request);
+    const user = await requireUser(request);
     const { searchParams } = new URL(request.url);
     const rangeParam = searchParams.get('range') ?? 'This month';
     const range = (RANGES as readonly string[]).includes(rangeParam) ? rangeParam : 'This month';
 
     const client = getSupabaseAdmin();
     const [{ count: totalCount, error: totalError }, { count: activeCount, error: activeError }, { count: pendingLeave, error: pendingError }] = await Promise.all([
-      client.from('employees').select('id', { count: 'exact', head: true }),
-      client.from('employees').select('id', { count: 'exact', head: true }).eq('status', 'active'),
-      client.from('leave_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+      client.from('employees').select('id', { count: 'exact', head: true }).eq('organization_id', user.organization_id),
+      client.from('employees').select('id', { count: 'exact', head: true }).eq('organization_id', user.organization_id).eq('status', 'active'),
+      client.from('leave_requests').select('id', { count: 'exact', head: true }).eq('organization_id', user.organization_id).eq('status', 'pending'),
     ]);
     if (totalError) throw totalError;
     if (activeError) throw activeError;
     if (pendingError) throw pendingError;
 
     const [{ data: byDepartment, error: departmentError }, { data: joins, error: joinsError }] = await Promise.all([
-      client.from('employees').select('department_id, departments(name)').eq('status', 'active'),
-      client.from('employees').select('join_date').gte('join_date', '1970-01-01'),
+      client.from('employees').select('department_id, departments(name)').eq('organization_id', user.organization_id).eq('status', 'active'),
+      client.from('employees').select('join_date').eq('organization_id', user.organization_id).gte('join_date', '1970-01-01'),
     ]);
     if (departmentError) throw departmentError;
     if (joinsError) throw joinsError;
