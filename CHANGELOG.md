@@ -91,3 +91,9 @@
 - Added create/list and task/update/complete APIs.
 - Completion requires all clearance tasks and then deactivates the employee with audit trail.
 - Added production smoke coverage for offboarding list; full smoke suite passes.
+
+### 2026-09-26 — Complete tenant scoping
+
+- Scoped every remaining API route that queries a table with `organization_id`: dashboard, leave approve/reject, payroll lock/process, notifications GET/PATCH/DELETE/read-all/clear-all.
+- Fixed payroll process so entries include `organization_id` (required by the tenant migration) and delete-then-insert stays within the same organization.
+- Verified with typecheck, lint, build, and the full production smoke suite.

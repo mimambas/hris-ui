@@ -51,7 +51,7 @@ Fondasi sudah ditingkatkan: tenant/RBAC migration, ownership hardening, settings
 
 | Area | Status | Reference | Gap |
 |---|---|---|---|
-| Tenant read/write scope | partial | `frontend/src/app/api/**`, `organization_id` migration | Some detail/mutation routes remain to audit; RLS missing |
+| Tenant read/write scope | partial | `frontend/src/app/api/**`, `organization_id` migration | Semua route dengan query tabel kini menyertakan `organization_id` (audit lengkap via grep); RLS masih missing |
 | Permission enforcement | partial | `frontend/src/lib/server/auth.ts` | `requirePermission()` exists but route adoption incomplete; coarse `requireAdmin()` remains |
 | Auth/session enterprise | partial | `auth/*`, `lib/api.ts` | MFA/SSO/SCIM/revocation/rate limiting; tokens use localStorage |
 | Payroll compliance | partial | payroll process route | Placeholder formulas; no PPh21 TER/PTKP, BPJS caps, THR, overtime, statutory exports |
