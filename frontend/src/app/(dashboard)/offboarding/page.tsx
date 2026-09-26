@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { CheckCircle2, Plus, RefreshCw, UserMinus, X } from 'lucide-react';
+import { CheckCircle2, Plus, RefreshCw, UserMinus, X, Calculator } from 'lucide-react';
 import api from '@/lib/api';
 import ModuleHeader from '@/components/ui/ModuleHeader';
 import EmptyState from '@/components/ui/EmptyState';
@@ -19,6 +19,7 @@ export default function OffboardingPage() {
   const [saving, setSaving] = useState(false);
   const [selected, setSelected] = useState<OffRecord | null>(null);
   const [completeTarget, setCompleteTarget] = useState<OffRecord | null>(null);
+  const [settlement, setSettlement] = useState<any>(null);
   const { toast } = useToast();
 
   const load = async () => {
@@ -67,6 +68,7 @@ export default function OffboardingPage() {
     finally { setSaving(false); }
   };
 
+  const loadSettlement = async (record: OffRecord) => { try { const response = await api.get(`/offboarding/${record.id}/settlement`); setSettlement(response.data); } catch (e: any) { toast(e.response?.data?.detail || 'Unable to calculate settlement.', 'error'); } };
   return <div>
     <ModuleHeader eyebrow="People operations" title="Offboarding" description="Manage clearance, handover, access revocation, and final settlement" action={<button onClick={() => setShowCreate(true)} className="btn-cta gap-2"><Plus size={15} /> Start offboarding</button>} />
     {loading ? <div className="card p-8 text-center text-sm text-muted">Loading offboarding…</div> : records.length === 0 ? (
@@ -76,7 +78,7 @@ export default function OffboardingPage() {
         <div className="w-11 h-11 rounded-full bg-red-50 flex items-center justify-center"><UserMinus size={18} className="text-semantic-down" /></div>
         <div className="flex-1"><p className="text-sm font-bold text-ink">{record.employee}</p><p className="text-xs text-muted">{record.employee_code} · {record.reason} · Last day {record.last_working_date}</p></div>
         <span className={`badge ${record.status === 'completed' ? 'bg-cta-surface text-cta' : 'bg-amber-50 text-accent-yellow'}`}>{record.status}</span>
-        <button onClick={() => setSelected(record)} className="btn-secondary text-xs">View clearance</button>
+        <button onClick={() => setSelected(record)} className="btn-secondary text-xs">View clearance</button><button onClick={() => void loadSettlement(record)} className="btn-secondary text-xs gap-1"><Calculator size={13} /> Settlement</button>
         {record.status === 'active' && <button disabled={record.progress < 100} onClick={() => setCompleteTarget(record)} className="btn-cta text-xs gap-1 disabled:opacity-50"><CheckCircle2 size={13} /> Complete</button>}
       </div>
       <div className="mt-4 flex items-center gap-3"><div className="h-2 flex-1 rounded-full bg-surface-strong overflow-hidden"><div className="h-full bg-primary rounded-full" style={{ width: `${record.progress}%` }} /></div><span className="font-mono text-xs text-muted">{record.progress}%</span></div>
@@ -100,6 +102,7 @@ export default function OffboardingPage() {
         <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-hairline-soft"><button type="button" onClick={() => setShowCreate(false)} className="btn-secondary">Cancel</button><button disabled={saving} className="btn-cta disabled:opacity-50">{saving ? 'Saving…' : 'Create workflow'}</button></div>
       </form></div>}
 
+    {settlement && <div className="fixed inset-0 z-[80] flex items-center justify-center p-4"><div className="absolute inset-0 bg-ink/40" onClick={() => setSettlement(null)} /><div className="relative w-full max-w-md rounded-2xl bg-canvas border border-hairline shadow-2xl p-6"><div className="flex justify-between items-start mb-5"><div><h2 className="text-base font-bold text-ink">Settlement estimate</h2><p className="text-xs text-muted mt-1">{settlement.employee} · {settlement.last_working_date}</p></div><button onClick={() => setSettlement(null)} className="btn-secondary min-h-10 min-w-10 px-3"><X size={15} /></button></div><div className="space-y-3 text-sm"><div className="flex justify-between"><span className="text-muted">Base salary</span><span className="font-mono text-ink">Rp {Number(settlement.base_salary).toLocaleString('id-ID')}</span></div><div className="flex justify-between"><span className="text-muted">Prorated salary estimate</span><span className="font-mono text-ink">Rp {Number(settlement.prorated_salary).toLocaleString('id-ID')}</span></div><div className="flex justify-between border-t border-hairline-soft pt-3 font-bold"><span className="text-ink">Estimated total</span><span className="font-mono text-primary">Rp {Number(settlement.estimated_total).toLocaleString('id-ID')}</span></div></div><p className="mt-5 text-[11px] text-muted">{settlement.disclaimer}</p></div></div>}
     <ConfirmDialog open={Boolean(completeTarget)} title="Complete offboarding?" description="The employee will be deactivated after all clearance tasks are complete." confirmLabel="Complete" onConfirm={() => void complete()} onCancel={() => setCompleteTarget(null)} />
   </div>;
 }

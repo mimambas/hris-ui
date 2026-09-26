@@ -121,3 +121,10 @@
 
 - Added the Offboarding dashboard page with create workflow, employee selector, reason/last-day fields, progress, clearance task toggles, and guarded completion.
 - Added Sidebar navigation entry and verified typecheck, lint, build, and production smoke tests.
+
+### 2026-09-26 — Offboarding settlement estimate
+
+- Added tenant-scoped settlement estimate endpoint and UI modal.
+- Calculates prorated salary estimate from employee base salary and last working date.
+- Clearly labels result as an estimate requiring policy/legal validation; unused leave and deductions remain explicit zero inputs until those ledgers exist.
+- Typecheck, lint, build, and production smoke tests pass.

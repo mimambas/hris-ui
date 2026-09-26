@@ -78,6 +78,12 @@ check('reports aggregation', reports.status === 200 && reports.data?.kpis && Arr
 check('reports trends present', Array.isArray(reports.data?.payroll_trend) && Array.isArray(reports.data?.attendance_trend));
 
 const offboarding = await call(adminToken, '/api/offboarding');
+if (offboarding.data?.items?.[0]?.id) {
+  const settlement = await call(adminToken, `/api/offboarding/${offboarding.data.items[0].id}/settlement`);
+  check('offboarding settlement estimate', settlement.status === 200 && typeof settlement.data?.estimated_total === 'number');
+}
+
+
 check('offboarding list', offboarding.status === 200 && Array.isArray(offboarding.data?.items));
 
 const checklist = await call(adminToken, '/api/checklist');
