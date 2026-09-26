@@ -43,7 +43,7 @@ Fondasi sudah ditingkatkan: tenant/RBAC migration, ownership hardening, settings
 | Employee bulk email | frontend/backend | dummy | `employees/page.tsx` | Toast-only; no provider/outbox/email API |
 | Audit UI dead fixtures/KPI | frontend | done | `audit-log/page.tsx` | Fixture dan Math.random sudah dihapus; icon/color, API search, live KPI, dan audit filter memakai data server |
 | Notification delivery | backend | missing | `notifications` API/table | No email/SMS/push, queue, retry, DLQ |
-| Offboarding | backend/frontend | missing | No route/table/page | PRD Module 9 not started |
+| Offboarding | backend/frontend | partial | No route/table/page | PRD Module 9 not started |
 | Positions CRUD | backend/frontend | done | `frontend/src/app/api/positions/*`, `frontend/src/app/(dashboard)/positions/page.tsx`, `supabase/migrations/20260925110000_positions_constraints.sql` | GET/POST/PUT/DELETE tenant-scoped, delete blocked for active employees, smoke test passes |
 | Bulk employee import | backend/frontend | missing | No route | PRD Module 1.2 |
 

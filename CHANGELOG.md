@@ -84,3 +84,10 @@
 - Added `npm run typecheck` script.
 - Org chart now exposes live reporting metadata with a smoke assertion.
 - Verified all CI commands locally.
+
+### 2026-09-26 — Offboarding workflow foundation
+
+- Added tenant-scoped offboarding records and clearance tasks.
+- Added create/list and task/update/complete APIs.
+- Completion requires all clearance tasks and then deactivates the employee with audit trail.
+- Added production smoke coverage for offboarding list; full smoke suite passes.
