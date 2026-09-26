@@ -250,3 +250,10 @@
 - Attendance list/detail reads now require `attendance:read`.
 - Manual/self-service attendance writes use `attendance:write` where elevated authorization is required.
 - Verified typecheck, lint, build, and production smoke tests.
+
+### 2026-09-26 — Audit and report permissions
+
+- Added `reports:read` permission for HR roles.
+- Audit log GET now requires `audit:read`.
+- Report aggregation, history, PDF, and XLSX routes now require `reports:read`.
+- Verified TypeScript, lint, build, and production smoke tests.
