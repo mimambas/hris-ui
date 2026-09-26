@@ -223,3 +223,8 @@
 
 - Departments and Positions CRUD routes now use `requirePermission(organization:write)` instead of coarse role allowlists.
 - Added production smoke assertions that employees cannot write departments or positions.
+
+### 2026-09-26 — Payroll permission slice
+
+- Payroll read routes now require `payroll:read`; period creation, processing, and locking require `payroll:write`.
+- Existing tenant and employee-role smoke tests pass.
