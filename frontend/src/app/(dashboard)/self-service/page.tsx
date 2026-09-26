@@ -176,7 +176,7 @@ export default function SelfServicePage() {
         ))}
       </div>
 
-      {tab === 'Overview' && <Overview onTab={setTab} person={serverProfile} />}
+      {tab === 'Overview' && <Overview onTab={setTab} person={serverProfile} balances={serverBalances} leaves={serverLeaves} attendance={serverAttendance} payslipCount={serverPayslips.length} />}
       {tab === 'Payslips' && (
         <PayslipsTab
           payslips={serverPayslips}
@@ -228,7 +228,15 @@ export default function SelfServicePage() {
 
 /* ─── Tab: Overview ─── */
 
-function Overview({ onTab, person }: { onTab: (t: Tab) => void; person?: any }) {
+function Overview({ onTab, person, balances, leaves, attendance, payslipCount }: { onTab: (t: Tab) => void; person?: any; balances: any[]; leaves: any[]; attendance: any[]; payslipCount: number }) {
+  const annual = balances.find((b: any) => b.leave_type === 'annual');
+  const present = attendance.filter((r: any) => ['present', 'wfh'].includes(r.status)).length;
+  const attendanceRate = attendance.length ? Math.round((present / attendance.length) * 1000) / 10 : 0;
+  const pending = leaves.filter((l: any) => l.status === 'pending').length;
+  const activity = [
+    ...leaves.slice(0, 3).map((l: any) => ({ text: `Leave ${l.leave_type} ${l.start_date} → ${l.status}`, when: l.start_date })),
+    ...attendance.slice(0, 2).map((a: any) => ({ text: `Attendance ${a.date} · ${a.status}`, when: a.date })),
+  ].slice(0, 4);
   const name = person?.full_name ?? profile.name;
   const initials = name.split(/\s+/).map((part: string) => part[0]).join('').slice(0, 2).toUpperCase();
   return (
@@ -246,10 +254,10 @@ function Overview({ onTab, person }: { onTab: (t: Tab) => void; person?: any }) 
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {[
-          { label: 'Leave balance', value: '9 / 12 days', hint: 'Annual leave remaining', icon: CalendarDays, action: () => onTab('Leave') },
-          { label: 'Next payday', value: '28 Sep 2026', hint: '6 days from now', icon: Wallet, action: () => onTab('Payslips') },
-          { label: 'Attendance rate', value: '94.7%', hint: 'This month', icon: Clock, action: () => onTab('Attendance') },
-          { label: 'Pending approvals', value: '1', hint: 'Leave request waiting', icon: AlertCircle, action: () => onTab('Leave') },
+          { label: 'Leave balance', value: annual ? `${annual.remaining_days} / ${annual.total_days} days` : '—', hint: 'Annual leave remaining', icon: CalendarDays, action: () => onTab('Leave') },
+          { label: 'Attendance rate', value: `${attendanceRate}%`, hint: 'Recorded period', icon: Clock, action: () => onTab('Attendance') },
+          { label: 'Pending leave', value: String(pending), hint: 'Waiting for approval', icon: AlertCircle, action: () => onTab('Leave') },
+          { label: 'Payslips', value: String(payslipCount), hint: 'Processed statements', icon: Wallet, action: () => onTab('Payslips') },
         ].map((item) => {
           const Icon = item.icon;
           return (
@@ -271,20 +279,14 @@ function Overview({ onTab, person }: { onTab: (t: Tab) => void; person?: any }) 
           <button onClick={() => onTab('Payslips')} className="text-xs font-semibold text-primary">View payslips</button>
         </div>
         <div className="space-y-4">
-          {[
-            'September payslip is ready to view',
-            'Leave request for 22-24 Sep submitted',
-            'August attendance finalized',
-            'Profile information was updated',
-            'July payslip downloaded',
-          ].map((item, i) => (
-            <div key={item} className="flex items-center gap-3">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${i === 1 ? 'bg-primary-surface text-primary' : 'bg-cta-surface text-cta'}`}>
+          {activity.length === 0 ? <p className="text-sm text-muted py-6 text-center">No recent activity yet.</p> : activity.map((item, i) => (
+            <div key={`${item.text}-${i}`} className="flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${i % 2 ? 'bg-primary-surface text-primary' : 'bg-cta-surface text-cta'}`}>
                 <CheckCircle2 size={14} />
               </div>
               <div className="flex-1">
-                <p className="text-sm text-ink">{item}</p>
-                <p className="text-[11px] text-muted mt-0.5">{i + 1} {i === 0 ? 'hour' : 'days'} ago</p>
+                <p className="text-sm text-ink">{item.text}</p>
+                <p className="text-[11px] text-muted mt-0.5">{item.when}</p>
               </div>
             </div>
           ))}
