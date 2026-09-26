@@ -92,7 +92,7 @@ check('report XLSX export', reportXlsx.status === 200 && (reportXlsx.headers.get
 const reportPdf = await fetch(`${BASE}/api/reports/export?report=headcount&range=This%20month`, { headers: { authorization: `Bearer ${adminToken}` } });
 check('report PDF export', reportPdf.status === 200 && (reportPdf.headers.get('content-type') || '').includes('application/pdf'));
 
-const payrollRules = await import('./src/lib/payroll.ts').catch(() => null);
+const payrollRules = await import('../src/lib/payroll.ts').catch(() => null);
 check('payroll statutory golden rules', Boolean(payrollRules));
 
 // Session revocation: a fresh login must be invalid immediately after logout.
