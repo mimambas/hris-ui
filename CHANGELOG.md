@@ -200,3 +200,9 @@
 - Added organization-scoped `organization_counters` and `next_business_sequence` RPC.
 - Employee IDs and expense claim numbers now use atomic database counters instead of latest-row reads.
 - Typecheck, lint, build, and production smoke tests pass.
+
+### 2026-09-26 — Employee bulk email outbox
+
+- Added tenant-scoped `email_outbox` and `/api/employees/bulk-email` queue/list API.
+- Bulk email UI now queues messages and explicitly reports that no provider is configured (does not claim delivery).
+- Added smoke coverage for admin queue success and employee permission denial.

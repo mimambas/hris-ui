@@ -40,7 +40,7 @@ Fondasi sudah ditingkatkan: tenant/RBAC migration, ownership hardening, settings
 | Leave balance | frontend/backend | done | `leave/page.tsx`, `api/leave/balances/route.ts` | Balance read endpoint tersedia; approval accounting/accrual policy belum ada |
 | Document requests | frontend/backend | partial | `documents/page.tsx` RequestDocsModal | Persisted `document_requests` schema/API and modal POST now tersedia; employee status transition API dan smoke coverage tersedia; upload checklist linkage dan delivery notifications belum ada |
 | Document policy templates | frontend/backend | partial | `documents/page.tsx` PolicyTemplatesModal`, `api/documents/templates/route.ts` | Template catalog API dan konten template asli tersedia; storage-backed PDF/versioning belum ada |
-| Employee bulk email | frontend/backend | dummy | `employees/page.tsx` | Toast-only; no provider/outbox/email API |
+| Employee bulk email | frontend/backend | partial | `employees/page.tsx` | Email outbox API dan batch queue tersedia; provider/worker/retry/DLQ belum ada |
 | Audit UI dead fixtures/KPI | frontend | done | `audit-log/page.tsx` | Fixture dan Math.random sudah dihapus; icon/color, API search, live KPI, dan audit filter memakai data server |
 | Notification delivery | backend | partial | `notification_deliveries` migration, `api/notifications/deliveries` | Durable outbox, in_app delivery, channel validation, attempts/status, dan smoke coverage tersedia; email/SMS provider, worker retry/DLQ, dan scheduled dispatch belum ada |
 | Offboarding | backend/frontend | partial | No route/table/page | PRD Module 9 not started |
