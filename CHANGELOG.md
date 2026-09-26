@@ -276,3 +276,9 @@
 - Added pure Indonesian payroll calculation helpers for PTKP, progressive PPh21 headline brackets, BPJS wage caps, overtime multipliers, THR proration, and net-pay invariant.
 - Added payroll golden tests in `scripts/test-payroll.mjs`; all statutory tests pass.
 - Existing payroll process route is still a demo until versioned rule configuration and UAT/legal validation are added.
+
+### 2026-09-26 — Revocable sessions and payroll golden tests
+
+- Added `user_sessions` table, login jti registration, refresh rotation, requireUser revocation checks, and `/api/auth/logout`.
+- Added smoke assertions for logout revocation and invalid refresh tokens.
+- Added pure payroll statutory helpers and golden tests for PTKP, PPh21 progressive brackets, BPJS caps, THR, overtime, and net-pay invariants.
