@@ -97,3 +97,10 @@
 - Scoped every remaining API route that queries a table with `organization_id`: dashboard, leave approve/reject, payroll lock/process, notifications GET/PATCH/DELETE/read-all/clear-all.
 - Fixed payroll process so entries include `organization_id` (required by the tenant migration) and delete-then-insert stays within the same organization.
 - Verified with typecheck, lint, build, and the full production smoke suite.
+
+### 2026-09-26 — RLS defense-in-depth
+
+- Enabled RLS on 26 public tenant/RBAC tables.
+- Added idempotent deny policies for direct anon/authenticated table access; server service-role routes remain the app boundary.
+- Storage object RLS was not changed because the migration role is not owner of `storage.objects`; document access remains enforced by signed-URL server routes.
+- Verified production smoke tests after RLS migration.

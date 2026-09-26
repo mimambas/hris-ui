@@ -58,7 +58,7 @@ Fondasi sudah ditingkatkan: tenant/RBAC migration, ownership hardening, settings
 | Atomic transactions | missing | leave/onboarding/payroll routes | Multi-write operations not transactional/RPC |
 | Unique attendance constraint | done | `supabase/migrations/20260926090000_attendance_unique.sql` | Unique index `(employee_id,date)` dengan dedupe; smoke test duplikat `409` lulus |
 | Atomic business sequences | partial | employees/expenses routes | latest+1 generation race-prone |
-| RLS | missing | Supabase migrations | Service role bypasses RLS; app predicates are sole boundary |
+| RLS | done | `supabase/migrations/20260926110000_rls_defense_in_depth.sql` | 26 public tenant/RBAC tables have RLS enabled and direct anon/authenticated access denied; service-role server remains app boundary |
 | Tests | missing/partial | `backend/tests`, no frontend test script | Only health smoke test added; no auth/IDOR/E2E/payroll golden tests |
 | CI | done | `.github/workflows/ci.yml` | Jobs frontend typecheck/lint/build, backend pytest, production smoke; typecheck script ditambahkan di `frontend/package.json` |
 | Operations | partial | Vercel/Supabase config | No restore drill, RPO/RTO, structured logs, tracing, SLO, queue |
