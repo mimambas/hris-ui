@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import bcrypt from 'bcryptjs';
 import { SignJWT } from 'jose';
+import { checkRateLimit } from '@/lib/server/rate-limit';
 
 function supabase() {
   const url = process.env.SUPABASE_URL;
@@ -22,6 +23,9 @@ export async function POST(request: Request) {
     const email = String(body.email ?? '').trim().toLowerCase();
     const password = String(body.password ?? '');
     if (!email || !password) return NextResponse.json({ detail: 'Email and password are required' }, { status: 422 });
+    const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+    const rateKey = `${forwarded || 'unknown'}:${email}`;
+    if (!checkRateLimit(rateKey)) return NextResponse.json({ detail: 'Too many login attempts. Try again later.' }, { status: 429 });
 
     const { data: user, error } = await supabase()
       .from('users')

@@ -239,3 +239,8 @@
 - Login and refresh now reject active users without an organization and include `organization_id` in access-token claims.
 - `/auth/me` and `requireUser` continue to re-read the active membership server-side; claims are not authoritative for permissions.
 - Typecheck, lint, build, and smoke tests pass.
+
+### 2026-09-26 — Login rate limiting
+
+- Added a bounded in-memory login rate limiter keyed by forwarded IP and email.
+- Login returns 429 after 10 attempts per 60-second window; successful auth flow and existing smoke tests remain green.
