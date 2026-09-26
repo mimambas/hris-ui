@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { apiError, getSupabaseAdmin, requireAdmin, requireUser } from '@/lib/server/auth';
+import { apiError, getSupabaseAdmin, requirePermission, requireUser } from '@/lib/server/auth';
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
     const user = await requireUser(request);
-    requireAdmin(user);
+    requirePermission(user, 'payroll:read');
     const client = getSupabaseAdmin();
     const { data, error } = await client.from('payroll_entries').select('*, employees!inner(full_name,email,employee_id,bank_name,bank_account,departments(name),positions(title)), payroll_periods!inner(name,period_start,period_end,status)').eq('organization_id', user.organization_id).eq('id', params.id).maybeSingle();
     if (error) throw error;

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
-import { apiError, getSupabaseAdmin, requireAdmin, requireUser } from '@/lib/server/auth';
+import { apiError, getSupabaseAdmin, requirePermission, requireUser } from '@/lib/server/auth';
 
 function normalizeEntry(row: any) {
   const employee = row.employees ?? {};
@@ -13,7 +13,7 @@ function normalizeEntry(row: any) {
 export async function GET(request: Request) {
   try {
     const user = await requireUser(request);
-    requireAdmin(user);
+    requirePermission(user, 'payroll:read');
     const { searchParams } = new URL(request.url);
     const periodId = searchParams.get('period_id');
     if (!periodId) return NextResponse.json({ detail: 'period_id is required' }, { status: 422 });

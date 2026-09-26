@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { apiError, getSupabaseAdmin, requireAdmin, requireUser } from '@/lib/server/auth';
+import { apiError, getSupabaseAdmin, requirePermission, requireUser } from '@/lib/server/auth';
 
 function normalizePeriod(row: any) { return { id: row.id, name: row.name, period_start: row.period_start, period_end: row.period_end, status: row.status, processed_at: row.processed_at, locked_at: row.locked_at }; }
 
 export async function GET(request: Request) {
   try {
     const user = await requireUser(request);
-    requireAdmin(user);
+    requirePermission(user, 'payroll:read');
     const { data, error } = await getSupabaseAdmin().from('payroll_periods').select('*').order('period_start', { ascending: false });
     if (error) throw error;
     return NextResponse.json({ items: (data ?? []).map(normalizePeriod) });
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const user = await requireUser(request); requireAdmin(user);
+    const user = await requireUser(request); requirePermission(user, 'payroll:write');
     const body = await request.json();
     const name = String(body.name ?? '').trim(); const start = String(body.period_start ?? ''); const end = String(body.period_end ?? '');
     if (!name || !start || !end) return NextResponse.json({ detail: 'Name, start date, and end date are required' }, { status: 422 });
