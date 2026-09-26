@@ -140,3 +140,9 @@
 - Added `onboarding_create_atomic` RPC for record + all template tasks in one transaction.
 - Onboarding POST now uses the RPC and cannot leave an orphan record when task insertion fails.
 - Typecheck, lint, build, and smoke tests pass.
+
+### 2026-09-26 — Atomic onboarding task transition
+
+- Added `onboarding_task_toggle_atomic` RPC with parent-record row lock and task/parent status update in one transaction.
+- Onboarding task route now uses the RPC and rejects changes to completed records.
+- Typecheck, lint, build, and smoke tests pass.

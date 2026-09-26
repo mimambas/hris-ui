@@ -55,7 +55,7 @@ Fondasi sudah ditingkatkan: tenant/RBAC migration, ownership hardening, settings
 | Permission enforcement | partial | `frontend/src/lib/server/auth.ts` | `requirePermission()` exists but route adoption incomplete; coarse `requireAdmin()` remains |
 | Auth/session enterprise | partial | `auth/*`, `lib/api.ts` | MFA/SSO/SCIM/revocation/rate limiting; tokens use localStorage |
 | Payroll compliance | partial | payroll process route | Placeholder formulas; no PPh21 TER/PTKP, BPJS caps, THR, overtime, statutory exports |
-| Atomic transactions | partial | leave/onboarding/payroll routes | Payroll process, offboarding completion, leave approval/balance, dan onboarding create RPC sudah atomic; onboarding task/status transition masih perlu RPC |
+| Atomic transactions | done | leave/onboarding/payroll routes | Payroll process, offboarding completion, leave approval/balance, dan onboarding create RPC sudah atomic; onboarding task/status transition kini atomic via RPC |
 | Unique attendance constraint | done | `supabase/migrations/20260926090000_attendance_unique.sql` | Unique index `(employee_id,date)` dengan dedupe; smoke test duplikat `409` lulus |
 | Atomic business sequences | partial | employees/expenses routes | latest+1 generation race-prone |
 | RLS | done | `supabase/migrations/20260926110000_rls_defense_in_depth.sql` | 26 public tenant/RBAC tables have RLS enabled and direct anon/authenticated access denied; service-role server remains app boundary |
