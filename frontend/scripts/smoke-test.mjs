@@ -111,6 +111,11 @@ check('health endpoint ready', health.status === 200 || health.status === 503);
 
 const reports = await call(adminToken, '/api/reports?range=This month');
 check('reports aggregation', reports.status === 200 && reports.data?.kpis && Array.isArray(reports.data?.headcount_by_department));
+const reportHistory = await call(adminToken, '/api/reports/generations', { method: 'POST', body: JSON.stringify({ name: `Smoke report ${Date.now()}`, report_type: 'headcount', format: 'csv', range: 'This month', row_count: 3 }) });
+check('report history record created', reportHistory.status === 201 && Boolean(reportHistory.data?.id));
+const reportHistoryList = await call(adminToken, '/api/reports/generations');
+check('report history listed', reportHistoryList.status === 200 && (reportHistoryList.data?.items ?? []).some((row) => row.id === reportHistory.data?.id));
+
 check('reports trends present', Array.isArray(reports.data?.payroll_trend) && Array.isArray(reports.data?.attendance_trend));
 
 const offboarding = await call(adminToken, '/api/offboarding');
