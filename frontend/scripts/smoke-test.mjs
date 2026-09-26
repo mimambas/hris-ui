@@ -184,7 +184,10 @@ check('notification create', notify.status === 201 && notify.data?.id);
 if (notify.data?.id) {
   const delivery = await call(adminToken, '/api/notifications/deliveries', { method: 'POST', body: JSON.stringify({ notification_id: notify.data.id, channel: 'in_app' }) });
   check('notification in_app delivery recorded', delivery.status === 201 && delivery.data?.status === 'delivered');
-  const deliveries = await call(adminToken, '/api/notifications/deliveries');
+  const deliveryRetry = await call(adminToken, `/api/notifications/deliveries/${delivery.data.id}/retry`, { method: 'POST' });
+check('notification delivery retry', deliveryRetry.status === 200 && deliveryRetry.data?.attempts >= 1);
+
+const deliveries = await call(adminToken, '/api/notifications/deliveries');
   check('notification delivery list', deliveries.status === 200 && Array.isArray(deliveries.data?.items));
   const invalidChannel = await call(adminToken, '/api/notifications/deliveries', { method: 'POST', body: JSON.stringify({ notification_id: notify.data.id, channel: 'carrier-pigeon' }) });
   check('notification rejects invalid channel', invalidChannel.status === 422);
