@@ -111,3 +111,8 @@
 - Added atomic payroll process and offboarding completion PostgreSQL functions.
 - Payroll process route now calls the atomic RPC, preventing partial delete/insert/status updates.
 - RLS migration intentionally does not alter `storage.objects` because the migration role is not its owner; server signed URLs remain the document boundary.
+
+### 2026-09-26 — RBAC schema integrity
+
+- Added a migration making `roles.organization_id` NOT NULL and indexed, preventing memberships from silently losing their role during auth joins.
+- Verified no null organization roles exist and production smoke tests pass.
