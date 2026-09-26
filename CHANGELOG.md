@@ -257,3 +257,9 @@
 - Audit log GET now requires `audit:read`.
 - Report aggregation, history, PDF, and XLSX routes now require `reports:read`.
 - Verified TypeScript, lint, build, and production smoke tests.
+
+### 2026-09-26 — Employee and leave permission slice
+
+- Leave detail/approval/rejection routes use `leave:read/write`.
+- Employee CRUD/import/bulk-email routes use `employee:write`; employee self-service PUT now permits only own contact fields.
+- Added smoke assertions for own-profile edit success and cross-employee edit denial.
