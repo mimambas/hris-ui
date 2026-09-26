@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { apiError, requireAdmin, requireUser } from '@/lib/server/auth';
+import { apiError, requirePermission, requireUser } from '@/lib/server/auth';
 
 const templates = [
   { id: 'employment-agreement', name: 'Employment Agreement', description: 'Standard employment contract template', category: 'Contract', content: 'EMPLOYMENT AGREEMENT\n\nEmployer: ____________________\nEmployee: ____________________\nPosition: ____________________\nStart date: ____________________\nEmployment type: ____________________\nCompensation: ____________________\nWorking hours: ____________________\nBenefits: ____________________\nTermination and notice: ____________________\n\nSignatures\nEmployer: ____________________ Date: __________\nEmployee: ____________________ Date: __________' },
@@ -10,6 +10,6 @@ const templates = [
 ];
 
 export async function GET(request: Request) {
-  try { const user = await requireUser(request); requireAdmin(user); return NextResponse.json({ items: templates }); }
+  try { const user = await requireUser(request); requirePermission(user, 'documents:write'); return NextResponse.json({ items: templates }); }
   catch (error) { return apiError(error); }
 }

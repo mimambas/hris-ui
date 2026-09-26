@@ -64,6 +64,10 @@ check('settings rejects invalid payload', invalidSettings.status === 422);
 const oversized = await call(adminToken, '/api/settings', { method: 'PATCH', body: JSON.stringify({ settings: { pad: 'x'.repeat(70000) } }) });
 check('settings rejects oversized payload', oversized.status === 422);
 const employeeSettingsWrite = await call(employeeToken, '/api/settings', { method: 'PATCH', body: JSON.stringify({ settings: { hack: true } }) });
+const employeeDocumentWrite = await call(employeeToken, '/api/documents/requests', { method: 'POST', body: JSON.stringify({ employee_ids: [], document_types: ['KTP'] }) });
+check('employee cannot create document requests', employeeDocumentWrite.status === 401 || employeeDocumentWrite.status === 403);
+
+
 check('employee cannot write settings', employeeSettingsWrite.status === 403 || employeeSettingsWrite.status === 401);
 
 
