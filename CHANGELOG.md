@@ -194,3 +194,9 @@
 - Added `notification_deliveries` outbox with channel/status/attempts and tenant scoping.
 - Added delivery create/list APIs with in-app delivery and invalid-channel validation.
 - Added production smoke coverage for notification create, in-app delivery, list, and invalid channel.
+
+### 2026-09-26 — Atomic business sequences
+
+- Added organization-scoped `organization_counters` and `next_business_sequence` RPC.
+- Employee IDs and expense claim numbers now use atomic database counters instead of latest-row reads.
+- Typecheck, lint, build, and production smoke tests pass.

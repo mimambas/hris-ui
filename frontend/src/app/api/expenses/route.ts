@@ -44,8 +44,11 @@ export async function POST(request: Request) {
     if (!resolvedEmployeeId) return NextResponse.json({ detail: 'Your user account is not linked to an employee record' }, { status: 422 });
     const { data: employee, error: employeeError } = await client.from('employees').select('id').eq('id', resolvedEmployeeId).eq('status', 'active').maybeSingle();
     if (employeeError) throw employeeError; if (!employee) return NextResponse.json({ detail: 'Active employee not found' }, { status: 404 });
-    const { data: latest } = await client.from('expense_claims').select('claim_number').like('claim_number', 'EXP-%').order('created_at', { ascending: false }).limit(1).maybeSingle(); const sequence = Number(String(latest?.claim_number ?? '').match(/(\d+)$/)?.[1] ?? 0) + 1;
-    const claimNumber = `EXP-${String(sequence).padStart(4, '0')}`;
+    const { data: latest } = await client.from('expense_claims').select('claim_number').eq('organization_id', user.organization_id).like('claim_number', 'EXP-%').order('created_at', { ascending: false }).limit(1).maybeSingle();
+    const floor = Number(String(latest?.claim_number ?? '').match(/(\d+)$/)?.[1] ?? 0);
+    const sequence = await client.rpc('next_business_sequence', { p_organization_id: user.organization_id, p_counter_key: 'expense_claim', p_floor: floor });
+    if (sequence.error) throw sequence.error;
+    const claimNumber = `EXP-${String(sequence.data).padStart(4, '0')}`;
     const { data, error } = await client.from('expense_claims').insert({ organization_id: user.organization_id, claim_number: claimNumber, employee_id: resolvedEmployeeId, category, amount, expense_date: date, description, receipt_attached: Boolean(body.receipt_attached) }).select('*, employee:employee_id(full_name,departments(name)), reviewer:reviewed_by(email)').single();
     if (error) throw error;
     await client.from('audit_logs').insert({ organization_id: user.organization_id, user_id: user.id, entity_type: 'expense_claim', entity_id: data.id, action: 'create', new_value: JSON.stringify({ claim_number: claimNumber, amount }) });

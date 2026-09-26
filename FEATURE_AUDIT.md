@@ -57,7 +57,7 @@ Fondasi sudah ditingkatkan: tenant/RBAC migration, ownership hardening, settings
 | Payroll compliance | partial | payroll process route | Placeholder formulas; no PPh21 TER/PTKP, BPJS caps, THR, overtime, statutory exports |
 | Atomic transactions | done | leave/onboarding/payroll routes | Payroll process, offboarding completion, leave approval/balance, dan onboarding create RPC sudah atomic; onboarding task/status transition kini atomic via RPC |
 | Unique attendance constraint | done | `supabase/migrations/20260926090000_attendance_unique.sql` | Unique index `(employee_id,date)` dengan dedupe; smoke test duplikat `409` lulus |
-| Atomic business sequences | partial | employees/expenses routes | latest+1 generation race-prone |
+| Atomic business sequences | done | employees/expenses routes | Organization-scoped atomic sequence RPC now generates employee IDs and expense claim numbers |
 | RLS | done | `supabase/migrations/20260926110000_rls_defense_in_depth.sql` | 26 public tenant/RBAC tables have RLS enabled and direct anon/authenticated access denied; service-role server remains app boundary |
 | Tests | missing/partial | `backend/tests`, no frontend test script | Only health smoke test added; no auth/IDOR/E2E/payroll golden tests |
 | CI | done | `.github/workflows/ci.yml` | Jobs frontend typecheck/lint/build, backend pytest, production smoke; typecheck script ditambahkan di `frontend/package.json` |

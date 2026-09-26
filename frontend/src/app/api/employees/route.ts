@@ -69,11 +69,13 @@ export async function POST(request: Request) {
     if (body.nik && !/^\d{16}$/.test(String(body.nik))) return NextResponse.json({ detail: 'NIK must be 16 digits' }, { status: 422 });
     const client = getSupabaseAdmin();
     const prefix = `EMP-${new Date().toISOString().slice(0, 10).replaceAll('-', '')}-`;
-    const { data: latest } = await client.from('employees').select('employee_id').like('employee_id', `${prefix}%`).order('employee_id', { ascending: false }).limit(1).maybeSingle();
-    const sequence = latest?.employee_id ? Number(latest.employee_id.slice(-3)) + 1 : 1;
+    const { data: maxRow } = await client.from('employees').select('employee_id').eq('organization_id', user.organization_id).like('employee_id', `${prefix}%`).order('employee_id', { ascending: false }).limit(1).maybeSingle();
+    const floor = maxRow?.employee_id ? Number(maxRow.employee_id.slice(-3)) : 0;
+    const sequence = await client.rpc('next_business_sequence', { p_organization_id: user.organization_id, p_counter_key: `employee:${prefix}`, p_floor: floor });
+    if (sequence.error) throw sequence.error;
     const record = {
       organization_id: user.organization_id,
-      employee_id: `${prefix}${String(sequence).padStart(3, '0')}`,
+      employee_id: `${prefix}${String(sequence.data).padStart(3, '0')}`,
       full_name: fullName,
       nik: body.nik || null,
       npwp: body.npwp || null,
