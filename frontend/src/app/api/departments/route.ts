@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { apiError, getSupabaseAdmin, requireAdmin, requireUser } from '@/lib/server/auth';
+import { apiError, getSupabaseAdmin, requirePermission, requireUser } from '@/lib/server/auth';
 import { orIlike } from '@/lib/server/query';
 
 function normalizeDepartment(row: any, employeeCount = 0) {
@@ -46,7 +46,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const user = await requireUser(request);
-    requireAdmin(user);
+    requirePermission(user, 'organization:write');
     const body = await request.json();
     const name = String(body.name ?? '').trim();
     const code = String(body.code ?? '').trim().toUpperCase();

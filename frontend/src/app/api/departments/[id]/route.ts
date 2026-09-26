@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { apiError, getSupabaseAdmin, requireAdmin, requireUser } from '@/lib/server/auth';
+import { apiError, getSupabaseAdmin, requirePermission, requireUser } from '@/lib/server/auth';
 
 function normalize(row: any) {
   return { ...row, parent: row.parent?.name ?? '—', head: 'Unassigned', head_email: '' };
@@ -20,7 +20,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
   try {
     const user = await requireUser(request);
-    requireAdmin(user);
+    requirePermission(user, 'organization:write');
     const body = await request.json();
     const allowed = ['name', 'code', 'parent_id', 'head_id', 'cost_center'];
     const update = Object.fromEntries(Object.entries(body).filter(([key]) => allowed.includes(key)));
@@ -41,7 +41,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   try {
     const user = await requireUser(request);
-    requireAdmin(user);
+    requirePermission(user, 'organization:write');
     const client = getSupabaseAdmin();
     const { count, error: countError } = await client.from('employees').select('id', { count: 'exact', head: true }).eq('organization_id', user.organization_id).eq('department_id', params.id);
     if (countError) throw countError;

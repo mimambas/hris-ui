@@ -145,6 +145,11 @@ if (employeesForAttendance.status === 200 && employeesForAttendance.data.items.l
 const orgChartEmployees = await call(adminToken, '/api/employees?per_page=100');
 check('org chart employee hierarchy fields', orgChartEmployees.status === 200 && orgChartEmployees.data.items.every((row) => Object.prototype.hasOwnProperty.call(row, 'reporting_to')));
 
+const employeeDepartmentsWrite = await call(employeeToken, '/api/departments', { method: 'POST', body: JSON.stringify({ name: 'Unauthorized', code: `NO-${Date.now()}` }) });
+check('employee cannot write departments', employeeDepartmentsWrite.status === 401 || employeeDepartmentsWrite.status === 403);
+const employeePositionsWrite = await call(employeeToken, '/api/positions', { method: 'POST', body: JSON.stringify({ title: 'Unauthorized', code: `NO-${Date.now()}`, department_id: '00000000-0000-0000-0000-000000000000' }) });
+check('employee cannot write positions', employeePositionsWrite.status === 401 || employeePositionsWrite.status === 403);
+
 const positions = await call(adminToken, '/api/positions');
 check('positions list', positions.status === 200 && Array.isArray(positions.data?.items));
 const departmentsList = await call(adminToken, '/api/departments');

@@ -218,3 +218,8 @@
 - Bulk import now resolves tenant-scoped department and position names into UUIDs.
 - Imports all rows in one database insert so any database error prevents partial success.
 - Validation report includes missing department/position references per row.
+
+### 2026-09-26 — Organization permission slice
+
+- Departments and Positions CRUD routes now use `requirePermission(organization:write)` instead of coarse role allowlists.
+- Added production smoke assertions that employees cannot write departments or positions.

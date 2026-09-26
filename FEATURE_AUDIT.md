@@ -52,7 +52,7 @@ Fondasi sudah ditingkatkan: tenant/RBAC migration, ownership hardening, settings
 | Area | Status | Reference | Gap |
 |---|---|---|---|
 | Tenant read/write scope | done | `frontend/src/app/api/**`, `organization_id` migration | Semua route query tabel menyertakan `organization_id`; RLS aktif di 26 tabel dengan deny policy |
-| Permission enforcement | partial | `frontend/src/lib/server/auth.ts` | Recruitment memakai `requirePermission(recruitment:read/write)` dengan permission khusus; route lain masih perlu migrasi bertahap dari coarse `requireAdmin()` |
+| Permission enforcement | partial | `frontend/src/lib/server/auth.ts` | Recruitment, Departments, dan Positions memakai permission khusus; route HR lain masih perlu migrasi bertahap dari coarse `requireAdmin()` |
 | Auth/session enterprise | partial | `auth/*`, `lib/api.ts` | MFA/SSO/SCIM/revocation/rate limiting; tokens use localStorage |
 | Payroll compliance | partial | payroll process route | Placeholder formulas; no PPh21 TER/PTKP, BPJS caps, THR, overtime, statutory exports |
 | Atomic transactions | done | leave/onboarding/payroll routes | Payroll process, offboarding completion, leave approval/balance, dan onboarding create RPC sudah atomic; onboarding task/status transition kini atomic via RPC |
