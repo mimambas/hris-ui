@@ -119,6 +119,11 @@ check('document requests list', docRequests.status === 200 && Array.isArray(docR
 
 const employeesForAttendance = await call(adminToken, '/api/employees?per_page=100');
 
+const emailQueue = await call(adminToken, '/api/employees/bulk-email', { method: 'POST', body: JSON.stringify({ employee_ids: [employeesForAttendance.data.items[0].id], subject: 'Smoke test', body: 'Queued smoke message' }) });
+check('bulk email queued', emailQueue.status === 201 && emailQueue.data?.status === 'queued');
+const emailInvalid = await call(employeeToken, '/api/employees/bulk-email', { method: 'POST', body: JSON.stringify({ employee_ids: [], subject: 'x', body: 'y' }) });
+check('employee cannot queue bulk email', emailInvalid.status === 401 || emailInvalid.status === 403);
+
 const docReq = await call(adminToken, '/api/documents/requests', { method: 'POST', body: JSON.stringify({ employee_ids: [employeesForAttendance.data.items[0].id], document_types: ['KTP'], due_date: '2026-12-31' }) });
 check('document request create', docReq.status === 201 && docReq.data?.items?.[0]?.id);
 if (docReq.data?.items?.[0]?.id) {

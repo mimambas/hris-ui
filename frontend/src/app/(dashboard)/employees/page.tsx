@@ -438,10 +438,13 @@ export default function EmployeesPage() {
     }
   };
 
-  const handleBulkEmail = (subject: string) => {
-    toast(`Email sent to ${selected.length} employee${selected.length !== 1 ? 's' : ''}: ${subject}`, 'success');
-    setShowEmailModal(false);
-    setShowBulkActions(false);
+  const handleBulkEmail = async (subject: string, body: string) => {
+    try {
+      const response = await api.post('/employees/bulk-email', { employee_ids: selected, subject, body });
+      setShowEmailModal(false);
+      setShowBulkActions(false);
+      toast(`${response.data.queued} email${response.data.queued === 1 ? '' : 's'} queued. No provider is configured, so they have not been sent yet.`, 'success');
+    } catch (error: any) { toast(error.response?.data?.detail || 'Unable to queue email.', 'error'); }
   };
 
   const exportColumns: Record<string, string[]> = {
