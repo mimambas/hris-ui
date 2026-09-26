@@ -170,3 +170,9 @@
 
 - Replaced coarse `requireAdmin()` with `requirePermission(employee:read/write)` across candidate, vacancy, note, and interview routes.
 - Existing role/tenant authorization smoke matrix and production smoke tests pass.
+
+### 2026-09-26 — Reports PDF and recruitment permission hardening
+
+- Added a real PDF report export endpoint with organization-scoped employee data and smoke coverage.
+- Added dedicated `recruitment:read/write` permissions so employee roles cannot read candidate PII.
+- Fixed the authorization regression discovered by smoke tests; full production smoke suite passes.

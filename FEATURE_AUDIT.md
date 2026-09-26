@@ -29,7 +29,7 @@ Fondasi sudah ditingkatkan: tenant/RBAC migration, ownership hardening, settings
 | Fitur | Modul | Status | Referensi | Gap |
 |---|---|---|---|---|
 | Settings | frontend | done | `settings/page.tsx` | Persistence, permission denial, invalid payload, dan size validation telah diuji smoke production |
-| Reports generation/export | frontend/backend | partial | `reports/page.tsx`, `reports/[id]/preview/page.tsx` | Charts, KPI, aggregation, payroll/attendance trends, dan preview kini memakai data live; Report history persistence, live CSV/JSON exporter, live preview, dan Share/link-copy tersedia; PDF/XLSX binary exporter masih belum dibuat |
+| Reports generation/export | frontend/backend | partial | `reports/page.tsx`, `reports/[id]/preview/page.tsx` | Charts, KPI, aggregation, payroll/attendance trends, dan preview kini memakai data live; Report history persistence, live CSV/JSON exporter, live preview, dan Share/link-copy tersedia; PDF binary exporter sekarang tersedia; XLSX binary exporter masih belum dibuat |
 | Calendar | frontend/backend | partial | `calendar/page.tsx` | Leave/employee/attendance data sekarang load API; event types, range query, holiday/company events, dan export belum ada |
 | Directory | frontend/backend | done | `directory/page.tsx` | Hardcoded roster; tidak ada directory API/DTO |
 | Org chart | frontend/backend | partial | `org-chart/page.tsx`, `api/employees/route.ts` | Team cards, member counts, employee reporting metadata, dan add-member memakai employee API; zoom/pan/collapse tree 8 level dan full hierarchy visualization belum ada |
@@ -52,7 +52,7 @@ Fondasi sudah ditingkatkan: tenant/RBAC migration, ownership hardening, settings
 | Area | Status | Reference | Gap |
 |---|---|---|---|
 | Tenant read/write scope | done | `frontend/src/app/api/**`, `organization_id` migration | Semua route query tabel menyertakan `organization_id`; RLS aktif di 26 tabel dengan deny policy |
-| Permission enforcement | partial | `frontend/src/lib/server/auth.ts` | Recruitment slice sekarang memakai `requirePermission(employee:read/write)`; route lain masih perlu migrasi bertahap dari coarse `requireAdmin()` |
+| Permission enforcement | partial | `frontend/src/lib/server/auth.ts` | Recruitment memakai `requirePermission(recruitment:read/write)` dengan permission khusus; route lain masih perlu migrasi bertahap dari coarse `requireAdmin()` |
 | Auth/session enterprise | partial | `auth/*`, `lib/api.ts` | MFA/SSO/SCIM/revocation/rate limiting; tokens use localStorage |
 | Payroll compliance | partial | payroll process route | Placeholder formulas; no PPh21 TER/PTKP, BPJS caps, THR, overtime, statutory exports |
 | Atomic transactions | done | leave/onboarding/payroll routes | Payroll process, offboarding completion, leave approval/balance, dan onboarding create RPC sudah atomic; onboarding task/status transition kini atomic via RPC |
