@@ -37,10 +37,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ detail: 'Invalid credentials' }, { status: 401 });
     }
 
-    const accessToken = await new SignJWT({ sub: user.id, role: user.role, organization_id: user.organization_id, type: 'access' })
+    const accessJti = crypto.randomUUID();
+    const refreshJti = crypto.randomUUID();
+    const accessToken = await new SignJWT({ sub: user.id, role: user.role, organization_id: user.organization_id, type: 'access', jti: accessJti })
       .setProtectedHeader({ alg: 'HS256' }).setExpirationTime('15m').sign(secret());
-    const refreshToken = await new SignJWT({ sub: user.id, type: 'refresh' })
+    const refreshToken = await new SignJWT({ sub: user.id, type: 'refresh', jti: refreshJti })
       .setProtectedHeader({ alg: 'HS256' }).setExpirationTime('7d').sign(secret());
+    await supabase().from('user_sessions').upsert({ user_id: user.id, organization_id: user.organization_id, token_id: accessJti, refresh_token_id: refreshJti, revoked_at: null, expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString() }, { onConflict: 'user_id,token_id' });
     await supabase().from('users').update({ last_login: new Date().toISOString() }).eq('id', user.id);
     return NextResponse.json({ access_token: accessToken, refresh_token: refreshToken, token_type: 'bearer' });
   } catch (error) {

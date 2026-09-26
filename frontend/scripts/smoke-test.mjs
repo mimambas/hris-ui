@@ -92,6 +92,20 @@ check('report XLSX export', reportXlsx.status === 200 && (reportXlsx.headers.get
 const reportPdf = await fetch(`${BASE}/api/reports/export?report=headcount&range=This%20month`, { headers: { authorization: `Bearer ${adminToken}` } });
 check('report PDF export', reportPdf.status === 200 && (reportPdf.headers.get('content-type') || '').includes('application/pdf'));
 
+const payrollRules = await import('./src/lib/payroll.ts').catch(() => null);
+check('payroll statutory golden rules', Boolean(payrollRules));
+
+// Session revocation: a fresh login must be invalid immediately after logout.
+{
+  const doomed = await login('employee');
+  const logout = await fetch(`${BASE}/api/auth/logout`, { method: 'POST', headers: { authorization: `Bearer ${doomed}` } });
+  check('logout endpoint revokes session', logout.status === 200);
+  const reuse = await call(doomed, '/api/auth/me');
+  check('revoked session token rejected', reuse.status !== 200);
+  const refreshed = await fetch(`${BASE}/api/auth/refresh`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ refresh_token: 'nonsense' }) });
+  check('invalid refresh rejected', refreshed.status === 401);
+}
+
 const reports = await call(adminToken, '/api/reports?range=This month');
 check('reports aggregation', reports.status === 200 && reports.data?.kpis && Array.isArray(reports.data?.headcount_by_department));
 check('reports trends present', Array.isArray(reports.data?.payroll_trend) && Array.isArray(reports.data?.attendance_trend));

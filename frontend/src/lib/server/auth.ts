@@ -27,6 +27,13 @@ export async function requireUser(request: Request): Promise<AuthUser> {
   if (error || !user?.is_active || !user.organization_id) throw new Error('UNAUTHORIZED');
   const { data: membership, error: membershipError } = await client.from('organization_memberships').select('role_id, role:roles(role_key)').eq('organization_id', user.organization_id).eq('user_id', user.id).eq('status', 'active').maybeSingle();
   if (membershipError || !membership) throw new Error('UNAUTHORIZED');
+  // Session revocation: tokens issued after the sessions migration carry a `jti`.
+  // Older tokens carry no `jti` and fall back to membership/active checks only.
+  if (typeof payload.jti === 'string') {
+    const { data: session, error: sessionError } = await client.from('user_sessions').select('id,revoked_at,expires_at').eq('user_id', user.id).eq('token_id', payload.jti).maybeSingle();
+    if (sessionError) throw new Error('UNAUTHORIZED');
+    if (!session || session.revoked_at || new Date(session.expires_at).getTime() <= Date.now()) throw new Error('UNAUTHORIZED');
+  }
   const { data: grants, error: grantsError } = await client.from('role_permissions').select('permission:permissions(permission_key)').eq('role_id', membership.role_id);
   if (grantsError) throw new Error('UNAUTHORIZED');
   const roleValue = Array.isArray(membership.role) ? membership.role[0]?.role_key : (membership.role as any)?.role_key;
