@@ -118,6 +118,16 @@ const docRequests = await call(adminToken, '/api/documents/requests');
 check('document requests list', docRequests.status === 200 && Array.isArray(docRequests.data?.items));
 
 const employeesForAttendance = await call(adminToken, '/api/employees?per_page=100');
+
+const docReq = await call(adminToken, '/api/documents/requests', { method: 'POST', body: JSON.stringify({ employee_ids: [employeesForAttendance.data.items[0].id], document_types: ['KTP'], due_date: '2026-12-31' }) });
+check('document request create', docReq.status === 201 && docReq.data?.items?.[0]?.id);
+if (docReq.data?.items?.[0]?.id) {
+  const reqId = docReq.data.items[0].id;
+  const submitted = await call(adminToken, `/api/documents/requests/${reqId}`, { method: 'PATCH', body: JSON.stringify({ status: 'submitted' }) });
+  check('document request status transition', submitted.status === 200 && submitted.data?.status === 'submitted');
+  const badStatus = await call(adminToken, `/api/documents/requests/${reqId}`, { method: 'PATCH', body: JSON.stringify({ status: 'bogus' }) });
+  check('document request rejects invalid status', badStatus.status === 422);
+}
 if (employeesForAttendance.status === 200 && employeesForAttendance.data.items.length) {
   const targetEmployee = employeesForAttendance.data.items[0];
   const today = new Date().toISOString().slice(0, 10);
