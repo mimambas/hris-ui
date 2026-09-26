@@ -128,3 +128,9 @@
 - Calculates prorated salary estimate from employee base salary and last working date.
 - Clearly labels result as an estimate requiring policy/legal validation; unused leave and deductions remain explicit zero inputs until those ledgers exist.
 - Typecheck, lint, build, and production smoke tests pass.
+
+### 2026-09-26 — Atomic leave approval
+
+- Added `leave_approve_atomic` RPC with row lock, status transition, and leave balance increment in one transaction.
+- Leave approve route now uses the RPC and rejects requests without a configured balance.
+- Verified typecheck, lint, build, and production smoke tests.

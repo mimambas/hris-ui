@@ -5,9 +5,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
   try {
     const user = await requireUser(request);
     requireAdmin(user);
-    const { data, error } = await getSupabaseAdmin().from('leave_requests').update({ status: 'approved', approved_by: user.id, approved_at: new Date().toISOString(), rejection_reason: null }).eq('organization_id', user.organization_id).eq('id', params.id).eq('status', 'pending').select('id,status').maybeSingle();
-    if (error) throw error;
-    if (!data) return NextResponse.json({ detail: 'Leave request is not pending or was not found' }, { status: 409 });
+    const { data, error } = await getSupabaseAdmin().rpc('leave_approve_atomic', { p_organization_id: user.organization_id, p_leave_id: params.id, p_approver_id: user.id });
+    if (error) return NextResponse.json({ detail: error.message }, { status: error.message?.includes('not pending') ? 409 : 422 });
     return NextResponse.json(data);
   } catch (error) {
     return apiError(error);
