@@ -228,3 +228,8 @@
 
 - Payroll read routes now require `payroll:read`; period creation, processing, and locking require `payroll:write`.
 - Existing tenant and employee-role smoke tests pass.
+
+### 2026-09-26 — Expense approval permissions
+
+- Expense edit/approve/reject mutations now require `payroll:write` instead of the coarse admin role allowlist.
+- Employee ownership remains enforced for employee delete/detail/list paths.
