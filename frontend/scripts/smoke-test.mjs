@@ -77,6 +77,9 @@ const reports = await call(adminToken, '/api/reports?range=This month');
 check('reports aggregation', reports.status === 200 && reports.data?.kpis && Array.isArray(reports.data?.headcount_by_department));
 check('reports trends present', Array.isArray(reports.data?.payroll_trend) && Array.isArray(reports.data?.attendance_trend));
 
+const offboarding = await call(adminToken, '/api/offboarding');
+check('offboarding list', offboarding.status === 200 && Array.isArray(offboarding.data?.items));
+
 const checklist = await call(adminToken, '/api/checklist');
 check('checklist templates list', checklist.status === 200 && Array.isArray(checklist.data?.items));
 if (checklist.status === 200) {
