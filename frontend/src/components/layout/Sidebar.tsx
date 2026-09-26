@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, Users, Clock, CalendarDays, Wallet, Receipt,
   Briefcase, UserPlus, FileText, BarChart3, Settings, LogOut, Building2,
-  GitBranch, ClipboardList, Search, Calendar, UserCircle, X,
+  GitBranch, ClipboardList, Search, Calendar, UserCircle, X, UserMinus,
 } from 'lucide-react';
 import { useMobileMenu } from '@/components/ui/MobileMenuContext';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
@@ -54,6 +54,7 @@ const sections: NavSection[] = [
       { label: 'Recruitment', href: '/recruitment', icon: Briefcase },
       { label: 'Onboarding', href: '/onboarding', icon: UserPlus },
       { label: 'Documents', href: '/documents', icon: FileText },
+      { label: 'Offboarding', href: '/offboarding', icon: UserMinus },
     ],
   },
   {

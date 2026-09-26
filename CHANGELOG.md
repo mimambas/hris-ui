@@ -116,3 +116,8 @@
 
 - Added a migration making `roles.organization_id` NOT NULL and indexed, preventing memberships from silently losing their role during auth joins.
 - Verified no null organization roles exist and production smoke tests pass.
+
+### 2026-09-26 — Offboarding UI
+
+- Added the Offboarding dashboard page with create workflow, employee selector, reason/last-day fields, progress, clearance task toggles, and guarded completion.
+- Added Sidebar navigation entry and verified typecheck, lint, build, and production smoke tests.
