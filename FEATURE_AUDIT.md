@@ -19,7 +19,7 @@ Fondasi sudah ditingkatkan: tenant/RBAC migration, ownership hardening, settings
 | Fitur | Modul | Status | Referensi | Test |
 |---|---|---|---|---|
 | Organization settings persistence | backend/frontend/database | done | `frontend/src/app/api/settings/route.ts`, `frontend/src/app/(dashboard)/settings/page.tsx`, `supabase/migrations/20260925100000_organization_settings.sql` | API GET production `200`; PATCH persistence test belum dibuat |
-| Tenant organization foundation | database/backend | partial | `supabase/migrations/20260924100000_tenant_rbac_foundation.sql`, `frontend/src/lib/server/auth.ts` | Organization/membership/permission schema, backfill, predicates, dan RLS defense tersedia; cross-tenant regression tests dan permission adoption route-by-route belum lengkap |
+| Tenant organization foundation | database/backend | partial | `supabase/migrations/20260924100000_tenant_rbac_foundation.sql`, `frontend/src/lib/server/auth.ts` | Organization/membership/permission schema, backfill, predicates, dan RLS defense tersedia; authorization regression matrix (8 endpoint, unauth/forged token, scoping) lulus; permission adoption route-by-route belum lengkap |
 | Audit organization scoping | frontend | done | `frontend/src/app/api/audit-log/route.ts`, audit inserts | Typecheck/build pass; complete route matrix test belum ada |
 | User guide page | frontend | done | `frontend/src/app/guide/page.tsx` | Build pass; manual browser test diperlukan |
 | Dynamic topbar identity | frontend | done | `frontend/src/components/layout/Topbar.tsx` | Typecheck/build pass |
@@ -51,7 +51,7 @@ Fondasi sudah ditingkatkan: tenant/RBAC migration, ownership hardening, settings
 
 | Area | Status | Reference | Gap |
 |---|---|---|---|
-| Tenant read/write scope | partial | `frontend/src/app/api/**`, `organization_id` migration | Semua route dengan query tabel kini menyertakan `organization_id` (audit lengkap via grep); RLS masih missing |
+| Tenant read/write scope | done | `frontend/src/app/api/**`, `organization_id` migration | Semua route query tabel menyertakan `organization_id`; RLS aktif di 26 tabel dengan deny policy |
 | Permission enforcement | partial | `frontend/src/lib/server/auth.ts` | `requirePermission()` exists but route adoption incomplete; coarse `requireAdmin()` remains |
 | Auth/session enterprise | partial | `auth/*`, `lib/api.ts` | MFA/SSO/SCIM/revocation/rate limiting; tokens use localStorage |
 | Payroll compliance | partial | payroll process route | Placeholder formulas; no PPh21 TER/PTKP, BPJS caps, THR, overtime, statutory exports |

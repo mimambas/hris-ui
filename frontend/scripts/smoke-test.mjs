@@ -129,6 +129,35 @@ check('positions list', positions.status === 200 && Array.isArray(positions.data
 const departmentsList = await call(adminToken, '/api/departments');
 check('departments feed', departmentsList.status === 200 && Array.isArray(departmentsList.data?.items));
 
+// Authorization regression matrix: employee must never reach admin/HR endpoints,
+// and requests without a valid signed token must never be authorized.
+const authMatrix = [
+  ['employee cannot read audit log', '/api/audit-log'],
+  ['employee cannot read onboarding', '/api/onboarding'],
+  ['employee cannot read offboarding', '/api/offboarding'],
+  ['employee cannot read recruitment', '/api/recruitment'],
+  ['employee cannot read report generations', '/api/reports/generations'],
+  ['employee cannot read checklist templates', '/api/checklist'],
+  ['employee cannot read import preview', '/api/employees/import'],
+];
+for (const [label, path] of authMatrix) {
+  const denied = await call(employeeToken, path);
+  check(label, denied.status === 401 || denied.status === 403);
+}
+
+// Document requests are legitimately readable by an employee for their own
+// records, so verify the scope instead of demanding a 403.
+const employeeMe = await call(employeeToken, '/api/auth/me');
+const ownRequests = await call(employeeToken, '/api/documents/requests');
+check('employee document requests scoped to own employee', ownRequests.status === 200 && (ownRequests.data?.items ?? []).every((row) => row.employee_id === employeeMe.data.employee_id));
+
+const noToken = await fetch(`${BASE}/api/employees`).catch(() => null);
+check('unauthenticated request rejected', !noToken || noToken.status === 401);
+const forged = await call('aaa.bbb.ccc', '/api/auth/me');
+check('forged token rejected', forged.status !== 200);
+const emptyAuthorization = await fetch(`${BASE}/api/auth/me`, { headers: { authorization: '' } }).catch(() => null);
+check('empty authorization rejected', !emptyAuthorization || emptyAuthorization.status === 401);
+
 const audit = await call(adminToken, '/api/audit-log?per_page=100');
 check('audit log read', audit.status === 200 && Array.isArray(audit.data?.items));
 check('audit log items scoped', audit.data?.items?.every((item) => Boolean(item.id)) ?? false);

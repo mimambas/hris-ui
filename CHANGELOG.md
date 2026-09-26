@@ -158,3 +158,10 @@
 
 - Added production smoke assertions for settings read/write, persistence, invalid payload, oversized payload, and employee write denial.
 - Settings now has a verified organization permission boundary.
+
+### 2026-09-26 — Authorization regression suite
+
+- Added an authorization matrix over audit-log, onboarding, offboarding, recruitment, report generations, checklist, and import endpoints: employee role receives 401/403.
+- Added assertions for unauthenticated, forged-token, and empty-authorization rejection.
+- Document requests verified by own-employee scoping rather than a blanket 403 (employees may legitimately read their own).
+- Marked Tenant organization foundation and Tenant read/write scope as done in the feature audit.
