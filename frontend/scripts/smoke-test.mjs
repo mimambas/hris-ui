@@ -58,6 +58,15 @@ const saved = await call(adminToken, '/api/settings', {
 });
 check('settings write', saved.status === 200 && saved.data?.settings?.companyName === 'PT Maju Bersama');
 const reloaded = await call(adminToken, '/api/settings');
+check('settings reload persists', reloaded.data?.settings?.companyName === 'PT Maju Bersama');
+const invalidSettings = await call(adminToken, '/api/settings', { method: 'PATCH', body: JSON.stringify({ settings: 'not-an-object' }) });
+check('settings rejects invalid payload', invalidSettings.status === 422);
+const oversized = await call(adminToken, '/api/settings', { method: 'PATCH', body: JSON.stringify({ settings: { pad: 'x'.repeat(70000) } }) });
+check('settings rejects oversized payload', oversized.status === 422);
+const employeeSettingsWrite = await call(employeeToken, '/api/settings', { method: 'PATCH', body: JSON.stringify({ settings: { hack: true } }) });
+check('employee cannot write settings', employeeSettingsWrite.status === 403 || employeeSettingsWrite.status === 401);
+
+
 check('settings persist after reload', reloaded.data?.settings?.companyName === 'PT Maju Bersama');
 
 const leaveBalances = await call(employeeToken, '/api/leave/balances');

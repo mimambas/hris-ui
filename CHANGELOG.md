@@ -153,3 +153,8 @@
 - Added CSV preview/import flow to Employees page using one batch request instead of N sequential writes.
 - Added CSV export endpoint and server-owned uniqueness validation.
 - Typecheck, lint, build, and production smoke tests pass.
+
+### 2026-09-26 — Settings permission tests
+
+- Added production smoke assertions for settings read/write, persistence, invalid payload, oversized payload, and employee write denial.
+- Settings now has a verified organization permission boundary.
