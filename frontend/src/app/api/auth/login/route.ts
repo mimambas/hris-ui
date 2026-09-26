@@ -25,15 +25,15 @@ export async function POST(request: Request) {
 
     const { data: user, error } = await supabase()
       .from('users')
-      .select('id,email,password_hash,role,is_active')
+      .select('id,email,password_hash,role,is_active,organization_id')
       .eq('email', email)
       .maybeSingle();
     if (error) throw error;
-    if (!user || !user.is_active || !(await bcrypt.compare(password, user.password_hash))) {
+    if (!user || !user.is_active || !user.organization_id || !(await bcrypt.compare(password, user.password_hash))) {
       return NextResponse.json({ detail: 'Invalid credentials' }, { status: 401 });
     }
 
-    const accessToken = await new SignJWT({ sub: user.id, role: user.role, type: 'access' })
+    const accessToken = await new SignJWT({ sub: user.id, role: user.role, organization_id: user.organization_id, type: 'access' })
       .setProtectedHeader({ alg: 'HS256' }).setExpirationTime('15m').sign(secret());
     const refreshToken = await new SignJWT({ sub: user.id, type: 'refresh' })
       .setProtectedHeader({ alg: 'HS256' }).setExpirationTime('7d').sign(secret());

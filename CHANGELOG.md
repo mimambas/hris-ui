@@ -233,3 +233,9 @@
 
 - Expense edit/approve/reject mutations now require `payroll:write` instead of the coarse admin role allowlist.
 - Employee ownership remains enforced for employee delete/detail/list paths.
+
+### 2026-09-26 — Authentication organization context
+
+- Login and refresh now reject active users without an organization and include `organization_id` in access-token claims.
+- `/auth/me` and `requireUser` continue to re-read the active membership server-side; claims are not authoritative for permissions.
+- Typecheck, lint, build, and smoke tests pass.
