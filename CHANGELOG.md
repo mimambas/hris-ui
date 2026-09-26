@@ -134,3 +134,9 @@
 - Added `leave_approve_atomic` RPC with row lock, status transition, and leave balance increment in one transaction.
 - Leave approve route now uses the RPC and rejects requests without a configured balance.
 - Verified typecheck, lint, build, and production smoke tests.
+
+### 2026-09-26 — Atomic onboarding create
+
+- Added `onboarding_create_atomic` RPC for record + all template tasks in one transaction.
+- Onboarding POST now uses the RPC and cannot leave an orphan record when task insertion fails.
+- Typecheck, lint, build, and smoke tests pass.
