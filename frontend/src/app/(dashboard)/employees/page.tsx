@@ -403,25 +403,27 @@ export default function EmployeesPage() {
   };
 
   const handleImportConfirm = async (imported: Employee[]) => {
-    let created = 0;
-    for (const employee of imported) {
-      try {
-        await api.post('/employees', {
+    // Single tenant-scoped batch request so the server owns validation, uniqueness,
+    // and the per-row error report instead of firing N sequential writes.
+    try {
+      const response = await api.post('/employees/import', {
+        rows: imported.map((employee) => ({
           full_name: employee.name,
           join_date: employee.joinDate,
-          email: employee.email || undefined,
-          phone: employee.phone || undefined,
-          branch: employee.location || undefined,
-          base_salary: employee.salary || undefined,
+          email: employee.email || null,
+          phone: employee.phone || null,
           employment_status: employee.status === 'probation' ? 'contract' : 'permanent',
-        });
-        created += 1;
-      } catch {
-        // Continue importing other valid rows and report the final count.
-      }
+        })),
+      });
+      const created = response.data.imported ?? 0;
+      await loadEmployees();
+      toast(`Imported ${created} of ${imported.length} employee${imported.length !== 1 ? 's' : ''}.`, created === imported.length ? 'success' : 'error');
+    } catch (error: any) {
+      const detail = error?.response?.data?.detail;
+      const firstError = error?.response?.data?.errors?.[0];
+      await loadEmployees();
+      toast(firstError ? `Row ${firstError.line}: ${firstError.reason}` : (detail || 'Import failed.'), 'error');
     }
-    await loadEmployees();
-    toast(`Imported ${created} of ${imported.length} employee${imported.length !== 1 ? 's' : ''}.`, created === imported.length ? 'success' : 'error');
   };
 
   const handleBulkStatus = async (status: Employee['status']) => {

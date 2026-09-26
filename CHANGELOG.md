@@ -146,3 +146,10 @@
 - Added `onboarding_task_toggle_atomic` RPC with parent-record row lock and task/parent status update in one transaction.
 - Onboarding task route now uses the RPC and rejects changes to completed records.
 - Typecheck, lint, build, and smoke tests pass.
+
+### 2026-09-26 — Batch employee import
+
+- Added tenant-scoped `POST /api/employees/import` with 1–1000 row validation and per-row error reporting.
+- Added CSV preview/import flow to Employees page using one batch request instead of N sequential writes.
+- Added CSV export endpoint and server-owned uniqueness validation.
+- Typecheck, lint, build, and production smoke tests pass.

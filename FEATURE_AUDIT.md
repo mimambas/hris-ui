@@ -45,7 +45,7 @@ Fondasi sudah ditingkatkan: tenant/RBAC migration, ownership hardening, settings
 | Notification delivery | backend | missing | `notifications` API/table | No email/SMS/push, queue, retry, DLQ |
 | Offboarding | backend/frontend | partial | No route/table/page | PRD Module 9 not started |
 | Positions CRUD | backend/frontend | done | `frontend/src/app/api/positions/*`, `frontend/src/app/(dashboard)/positions/page.tsx`, `supabase/migrations/20260925110000_positions_constraints.sql` | GET/POST/PUT/DELETE tenant-scoped, delete blocked for active employees, smoke test passes |
-| Bulk employee import | backend/frontend | missing | No route | PRD Module 1.2 |
+| Bulk employee import | backend/frontend | partial | `api/employees/import/route.ts`, `employees/page.tsx` | Batch CSV import with max 1000 rows, server validation, preview, and error report tersedia; XLSX support, rollback/import job, dan richer field mapping belum ada |
 
 ## Remaining security and data-integrity gaps
 
