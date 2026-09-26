@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { apiError, getSupabaseAdmin, requireAdmin, requireUser } from '@/lib/server/auth';
+import { apiError, getSupabaseAdmin, requirePermission, requireUser } from '@/lib/server/auth';
 import { orIlike } from '@/lib/server/query';
 
 const PAGE_SIZE_DEFAULT = 10;
@@ -61,7 +61,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const user = await requireUser(request);
-    requireAdmin(user);
+    requirePermission(user, 'employee:write');
     const body = await request.json();
     const fullName = String(body.full_name ?? '').trim();
     const joinDate = String(body.join_date ?? '').trim();

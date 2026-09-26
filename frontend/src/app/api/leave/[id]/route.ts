@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
-import { apiError, getSupabaseAdmin, requireAdmin, requireUser } from '@/lib/server/auth';
+import { apiError, getSupabaseAdmin, requirePermission, requireUser } from '@/lib/server/auth';
 
 const normalize = (row: any) => ({ ...row, employee_name: row.employee?.full_name ?? 'Unknown employee', employee_email: row.employee?.email ?? '', department: row.employee?.departments?.name ?? 'Unassigned' });
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
     const user = await requireUser(request);
+    requirePermission(user, 'leave:read');
     const client = getSupabaseAdmin();
     let query = client.from('leave_requests').select('*, employee:employee_id(full_name,email,departments(name))').eq('organization_id', user.organization_id).eq('id', params.id);
     if (!['super_admin', 'hr_director', 'hr_manager', 'hr_officer'].includes(user.role)) {
@@ -24,7 +25,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   try {
     const user = await requireUser(request);
-    requireAdmin(user);
+    requirePermission(user, 'leave:write');
     const { data, error } = await getSupabaseAdmin().from('leave_requests').delete().eq('id', params.id).eq('status', 'rejected').select('id').maybeSingle();
     if (error) throw error;
     if (!data) return NextResponse.json({ detail: 'Only rejected requests can be removed' }, { status: 409 });

@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { apiError, getSupabaseAdmin, requireAdmin, requireUser } from '@/lib/server/auth';
+import { apiError, getSupabaseAdmin, requirePermission, requireUser } from '@/lib/server/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   try {
     const user = await requireUser(request);
-    requireAdmin(user);
+    requirePermission(user, 'employee:write');
     const body = await request.json();
     const employeeIds = Array.isArray(body.employee_ids) ? body.employee_ids.filter(Boolean) : [];
     const subject = String(body.subject ?? '').trim();
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   try {
     const user = await requireUser(request);
-    requireAdmin(user);
+    requirePermission(user, 'employee:write');
     const { data, error } = await getSupabaseAdmin()
       .from('email_outbox').select('id,recipient_email,subject,status,attempts,last_error,created_at')
       .eq('organization_id', user.organization_id).order('created_at', { ascending: false }).limit(100);

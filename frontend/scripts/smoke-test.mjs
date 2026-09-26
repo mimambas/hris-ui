@@ -178,6 +178,17 @@ for (const [label, path] of authMatrix) {
 // Document requests are legitimately readable by an employee for their own
 // records, so verify the scope instead of demanding a 403.
 const employeeMe = await call(employeeToken, '/api/auth/me');
+
+const ownProfile = employeeMe.data.employee_id;
+if (ownProfile) {
+  const editOwn = await call(employeeToken, `/api/employees/${ownProfile}`, { method: 'PUT', body: JSON.stringify({ phone: '+628000000001' }) });
+  check('employee can edit own contact profile', editOwn.status === 200);
+  const otherEmployee = (await call(adminToken, '/api/employees?per_page=100')).data.items.find((row) => row.id !== ownProfile);
+  if (otherEmployee) {
+    const editOther = await call(employeeToken, `/api/employees/${otherEmployee.id}`, { method: 'PUT', body: JSON.stringify({ base_salary: 999999999 }) });
+    check('employee cannot edit another employee', editOther.status === 401 || editOther.status === 403 || editOther.status === 422);
+  }
+}
 const ownRequests = await call(employeeToken, '/api/documents/requests');
 check('employee document requests scoped to own employee', ownRequests.status === 200 && (ownRequests.data?.items ?? []).every((row) => row.employee_id === employeeMe.data.employee_id));
 

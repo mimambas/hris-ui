@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { apiError, getSupabaseAdmin, requireAdmin, requireUser } from '@/lib/server/auth';
+import { apiError, getSupabaseAdmin, requirePermission, requireUser } from '@/lib/server/auth';
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
     const user = await requireUser(request);
-    requireAdmin(user);
+    requirePermission(user, 'leave:write');
     const body = await request.json().catch(() => ({}));
     const reason = String(body.reason ?? '').trim();
     if (!reason) return NextResponse.json({ detail: 'Rejection reason is required' }, { status: 422 });

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { apiError, getSupabaseAdmin, requireAdmin, requireUser } from '@/lib/server/auth';
+import { apiError, getSupabaseAdmin, requirePermission, requireUser } from '@/lib/server/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +11,7 @@ function csv(rows: any[]) {
 export async function POST(request: Request) {
   try {
     const user = await requireUser(request);
-    requireAdmin(user);
+    requirePermission(user, 'employee:write');
     const body = await request.json();
     const rows = Array.isArray(body.rows) ? body.rows : [];
     if (!rows.length || rows.length > 1000) return NextResponse.json({ detail: 'Rows must contain between 1 and 1000 records' }, { status: 422 });
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
   try {
-    const user = await requireUser(request); requireAdmin(user);
+    const user = await requireUser(request); requirePermission(user, 'employee:write');
     const { data, error } = await getSupabaseAdmin().from('employees').select('employee_id,full_name,email,join_date,employment_status,employment_type').eq('organization_id', user.organization_id).order('created_at', { ascending: false }).limit(1000);
     if (error) throw error;
     return new NextResponse(csv(data ?? []), { headers: { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': 'attachment; filename="employees.csv"' } });
