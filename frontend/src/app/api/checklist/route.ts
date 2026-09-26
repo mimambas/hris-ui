@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { apiError, getSupabaseAdmin, requireAdmin, requireUser } from '@/lib/server/auth';
+import { apiError, getSupabaseAdmin, requirePermission, requireUser } from '@/lib/server/auth';
 
 const STATUSES = ['pending', 'in-progress', 'completed'] as const;
 const PRIORITIES = ['Low', 'Medium', 'High'] as const;
@@ -11,7 +11,7 @@ function normalize(row: any) {
 export async function GET(request: Request) {
   try {
     const user = await requireUser(request);
-    requireAdmin(user);
+    requirePermission(user, 'onboarding:write');
     const { data, error } = await getSupabaseAdmin()
       .from('checklist_templates')
       .select('id,name,category,assignee,due_date,priority,status')
@@ -25,7 +25,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const user = await requireUser(request);
-    requireAdmin(user);
+    requirePermission(user, 'onboarding:write');
     const body = await request.json();
     const name = String(body.name ?? '').trim();
     const category = String(body.category ?? '').trim();

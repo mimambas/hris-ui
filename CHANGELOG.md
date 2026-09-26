@@ -263,3 +263,10 @@
 - Leave detail/approval/rejection routes use `leave:read/write`.
 - Employee CRUD/import/bulk-email routes use `employee:write`; employee self-service PUT now permits only own contact fields.
 - Added smoke assertions for own-profile edit success and cross-employee edit denial.
+
+### 2026-09-26 — Workflow permission matrix
+
+- Added dedicated notification, onboarding, and offboarding read/write permissions.
+- Migrated remaining workflow routes from coarse `requireAdmin()` to permission checks, including checklist, notification deliveries, onboarding, offboarding, and notification listing.
+- Employee grants are read-only for notifications/onboarding; HR roles receive workflow writes.
+- Typecheck, lint, build, and production smoke tests pass.

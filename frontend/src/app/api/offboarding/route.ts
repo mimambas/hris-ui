@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { apiError, getSupabaseAdmin, requireAdmin, requireUser } from '@/lib/server/auth';
+import { apiError, getSupabaseAdmin, requirePermission, requireUser } from '@/lib/server/auth';
 
 const TASKS = [
   ['asset-return', 'Asset return', 'IT team'],
@@ -38,7 +38,7 @@ async function fetchRecords(client: ReturnType<typeof getSupabaseAdmin>, organiz
 export async function GET(request: Request) {
   try {
     const user = await requireUser(request);
-    requireAdmin(user);
+    requirePermission(user, 'offboarding:write');
     return NextResponse.json({ items: (await fetchRecords(getSupabaseAdmin(), user.organization_id)).map(normalize) });
   } catch (error) { return apiError(error); }
 }
@@ -46,7 +46,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const user = await requireUser(request);
-    requireAdmin(user);
+    requirePermission(user, 'offboarding:write');
     const body = await request.json();
     const employeeId = String(body.employee_id ?? '').trim();
     const reason = String(body.reason ?? '').trim();

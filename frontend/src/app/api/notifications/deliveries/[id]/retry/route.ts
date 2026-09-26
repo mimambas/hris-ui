@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { apiError, getSupabaseAdmin, requireAdmin, requireUser } from '@/lib/server/auth';
+import { apiError, getSupabaseAdmin, requirePermission, requireUser } from '@/lib/server/auth';
 
 const MAX_ATTEMPTS = 3;
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
-    const user = await requireUser(request); requireAdmin(user);
+    const user = await requireUser(request); requirePermission(user, 'notifications:write');
     const client = getSupabaseAdmin();
     const current = await client.from('notification_deliveries').select('id,status,attempts,channel').eq('organization_id', user.organization_id).eq('id', params.id).maybeSingle();
     if (current.error) throw current.error;

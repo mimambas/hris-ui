@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { apiError, getSupabaseAdmin, requireAdmin, requireUser } from '@/lib/server/auth';
+import { apiError, getSupabaseAdmin, requirePermission, requireUser } from '@/lib/server/auth';
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
-    const user = await requireUser(request); requireAdmin(user);
+    const user = await requireUser(request); requirePermission(user, 'offboarding:read');
     const client = getSupabaseAdmin();
     const { data: record, error } = await client.from('offboarding_records').select('id,employee_id,last_working_date,reason,employee:employee_id(full_name,employee_id,base_salary,join_date)').eq('organization_id', user.organization_id).eq('id', params.id).maybeSingle();
     if (error) throw error;

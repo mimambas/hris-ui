@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { apiError, getSupabaseAdmin, requireAdmin, requireUser } from '@/lib/server/auth';
+import { apiError, getSupabaseAdmin, requirePermission, requireUser } from '@/lib/server/auth';
 
 const STATUSES = ['pending', 'in-progress', 'completed'] as const;
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
     const user = await requireUser(request);
-    requireAdmin(user);
+    requirePermission(user, 'onboarding:write');
     const body = await request.json();
     const status = String(body.status ?? '');
     if (!STATUSES.includes(status as any)) return NextResponse.json({ detail: 'Invalid status' }, { status: 422 });
@@ -27,7 +27,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   try {
     const user = await requireUser(request);
-    requireAdmin(user);
+    requirePermission(user, 'onboarding:write');
     const { data, error } = await getSupabaseAdmin()
       .from('checklist_templates')
       .delete()

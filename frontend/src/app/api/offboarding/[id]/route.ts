@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { apiError, getSupabaseAdmin, requireAdmin, requireUser } from '@/lib/server/auth';
+import { apiError, getSupabaseAdmin, requirePermission, requireUser } from '@/lib/server/auth';
 
 async function load(client: ReturnType<typeof getSupabaseAdmin>, organizationId: string, id: string) {
   const { data, error } = await client
@@ -24,7 +24,7 @@ function normalize(row: any) {
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
     const user = await requireUser(request);
-    requireAdmin(user);
+    requirePermission(user, 'offboarding:write');
     const body = await request.json();
     const client = getSupabaseAdmin();
 
