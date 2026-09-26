@@ -244,3 +244,9 @@
 
 - Added a bounded in-memory login rate limiter keyed by forwarded IP and email.
 - Login returns 429 after 10 attempts per 60-second window; successful auth flow and existing smoke tests remain green.
+
+### 2026-09-26 — Attendance permission slice
+
+- Attendance list/detail reads now require `attendance:read`.
+- Manual/self-service attendance writes use `attendance:write` where elevated authorization is required.
+- Verified typecheck, lint, build, and production smoke tests.
