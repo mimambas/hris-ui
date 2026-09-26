@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { apiError, getSupabaseAdmin, requireAdmin, requireUser } from '@/lib/server/auth';
+import { apiError, getSupabaseAdmin, requirePermission, requireUser } from '@/lib/server/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +24,7 @@ function rangeBounds(range: string): { from: string; to: string } {
 export async function GET(request: Request) {
   try {
     const user = await requireUser(request);
-    requireAdmin(user);
+    requirePermission(user, 'reports:read');
     const range = (new URL(request.url).searchParams.get('range') ?? 'This month') as Range;
     const { from, to } = rangeBounds(range);
     const client = getSupabaseAdmin();

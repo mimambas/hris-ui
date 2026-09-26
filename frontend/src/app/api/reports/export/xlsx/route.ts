@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
-import { apiError, getSupabaseAdmin, requireAdmin, requireUser } from '@/lib/server/auth';
+import { apiError, getSupabaseAdmin, requirePermission, requireUser } from '@/lib/server/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
-    const user = await requireUser(request); requireAdmin(user);
+    const user = await requireUser(request); requirePermission(user, 'reports:read');
     const params = new URL(request.url).searchParams;
     const report = params.get('report') ?? 'headcount'; const range = params.get('range') ?? 'This month';
     const { data, error } = await getSupabaseAdmin().from('employees').select('employee_id,full_name,email,department_id,departments(name),status,join_date').eq('organization_id', user.organization_id).order('full_name');

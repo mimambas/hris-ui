@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { apiError, getSupabaseAdmin, requireAdmin, requireUser } from '@/lib/server/auth';
+import { apiError, getSupabaseAdmin, requirePermission, requireUser } from '@/lib/server/auth';
 
 function pdfEscape(value: string) { return value.replace(/([\\()])/g, '\\$1').replace(/[^\x20-\x7E]/g, '?'); }
 function buildPdf(title: string, rows: { label: string; value: string }[]) {
@@ -20,7 +20,7 @@ function buildPdf(title: string, rows: { label: string; value: string }[]) {
 
 export async function GET(request: Request) {
   try {
-    const user = await requireUser(request); requireAdmin(user);
+    const user = await requireUser(request); requirePermission(user, 'reports:read');
     const params = new URL(request.url).searchParams;
     const report = params.get('report') ?? 'headcount'; const range = params.get('range') ?? 'This month';
     const client = getSupabaseAdmin();
