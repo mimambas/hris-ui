@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { apiError, getSupabaseAdmin, requireAdmin, requireUser } from '@/lib/server/auth';
+import { apiError, getSupabaseAdmin, requirePermission, requireUser } from '@/lib/server/auth';
 
 const STATUSES = ['present', 'late', 'absent', 'half-day', 'leave', 'wfh'];
 
@@ -27,8 +27,9 @@ function normalize(row: any) {
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
     const user = await requireUser(request);
-    const isAdmin = ['super_admin', 'hr_director', 'hr_manager', 'hr_officer'].includes(user.role);
+    requirePermission(user, 'attendance:read');
     const client = getSupabaseAdmin();
+    const isAdmin = ['super_admin', 'hr_director', 'hr_manager', 'hr_officer'].includes(user.role);
     let query = client.from('attendance_records').select('*, employees!inner(full_name, employee_id, department_id, departments(name))').eq('organization_id', user.organization_id).eq('id', params.id);
     if (!isAdmin) {
       if (!user.employee_id) return NextResponse.json({ detail: 'Your user account is not linked to an employee record' }, { status: 422 });
@@ -75,7 +76,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   try {
     const user = await requireUser(request);
-    requireAdmin(user);
+    requirePermission(user, 'attendance:write');
     const { data, error } = await getSupabaseAdmin().from('attendance_records').delete().eq('id', params.id).select('id').maybeSingle();
     if (error) throw error;
     if (!data) return NextResponse.json({ detail: 'Attendance record not found' }, { status: 404 });

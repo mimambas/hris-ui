@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { apiError, getSupabaseAdmin, requireAdmin, requireUser } from '@/lib/server/auth';
+import { apiError, getSupabaseAdmin, requirePermission, requireUser } from '@/lib/server/auth';
 
 const STATUSES = ['present', 'late', 'absent', 'half-day', 'leave', 'wfh'] as const;
 
@@ -55,6 +55,7 @@ function validateBody(body: any) {
 export async function GET(request: Request) {
   try {
     const user = await requireUser(request);
+    requirePermission(user, 'attendance:read');
     const elevated = ['super_admin', 'hr_director', 'hr_manager', 'hr_officer'].includes(user.role);
     const { searchParams } = new URL(request.url);
     const scopedEmployeeId = elevated ? searchParams.get('employee_id') : user.employee_id;
@@ -96,7 +97,7 @@ export async function POST(request: Request) {
     const { data: employee, error: employeeError } = await client.from('employees').select('id').eq('id', employeeId).eq('status', 'active').maybeSingle();
     if (employeeError) throw employeeError;
     if (!employee) return NextResponse.json({ detail: 'Active employee not found' }, { status: 404 });
-    if (body.source === 'manual') requireAdmin(user);
+    if (body.source === 'manual') requirePermission(user, 'attendance:write');
     const { data: duplicate } = await client.from('attendance_records').select('id').eq('employee_id', employeeId).eq('date', parsed.date).maybeSingle();
     if (duplicate) return NextResponse.json({ detail: 'Attendance already exists for this employee and date' }, { status: 409 });
     const record = { organization_id: user.organization_id, employee_id: employeeId, date: parsed.date, check_in: parsed.checkIn, check_out: parsed.checkOut, status: parsed.status, late_minutes: parsed.lateMinutes, overtime_hours: parsed.overtime, source: body.source === 'manual' ? 'manual' : 'web', notes: String(body.notes ?? '').trim() || null };
