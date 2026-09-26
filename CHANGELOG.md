@@ -212,3 +212,9 @@
 - Employee import modal now accepts CSV, XLSX, and XLS via the existing `xlsx` dependency.
 - First worksheet is parsed into the same validation preview before batch API import.
 - Typecheck and smoke tests pass.
+
+### 2026-09-26 — Bulk import richer mapping
+
+- Bulk import now resolves tenant-scoped department and position names into UUIDs.
+- Imports all rows in one database insert so any database error prevents partial success.
+- Validation report includes missing department/position references per row.
