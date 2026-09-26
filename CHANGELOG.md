@@ -182,3 +182,9 @@
 - Added a real XLSX binary export route using the `xlsx` package.
 - Export includes organization-scoped employee rows and correct spreadsheet MIME/content-disposition.
 - Added production smoke coverage for both PDF and XLSX exports; all smoke tests pass.
+
+### 2026-09-26 — Document request lifecycle
+
+- Added tenant/employee-scoped PATCH `/api/documents/requests/[id]` for submitted, completed, and cancelled transitions.
+- Added invalid-status rejection and audit logging.
+- Document request workflow now has create + status transition API contracts.

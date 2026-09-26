@@ -38,7 +38,7 @@ Fondasi sudah ditingkatkan: tenant/RBAC migration, ownership hardening, settings
 | Onboarding checklist standalone | frontend/backend | partial | `onboarding/checklist/page.tsx`, `api/checklist/*` | Template API GET/POST/PATCH/DELETE dan UI persistence tersedia; association ke onboarding employee belum lengkap |
 | Self-service payslip | frontend/backend | done | `self-service/page.tsx`, `api/payroll/self-service/route.ts` | Payslip employee-scoped tersedia; PDF binary download belum ada |
 | Leave balance | frontend/backend | done | `leave/page.tsx`, `api/leave/balances/route.ts` | Balance read endpoint tersedia; approval accounting/accrual policy belum ada |
-| Document requests | frontend/backend | partial | `documents/page.tsx` RequestDocsModal | Persisted `document_requests` schema/API and modal POST now tersedia; employee submission/status workflow and delivery notifications belum ada |
+| Document requests | frontend/backend | partial | `documents/page.tsx` RequestDocsModal | Persisted `document_requests` schema/API and modal POST now tersedia; employee status transition API dan smoke coverage tersedia; upload checklist linkage dan delivery notifications belum ada |
 | Document policy templates | frontend/backend | partial | `documents/page.tsx` PolicyTemplatesModal`, `api/documents/templates/route.ts` | Template catalog API dan konten template asli tersedia; storage-backed PDF/versioning belum ada |
 | Employee bulk email | frontend/backend | dummy | `employees/page.tsx` | Toast-only; no provider/outbox/email API |
 | Audit UI dead fixtures/KPI | frontend | done | `audit-log/page.tsx` | Fixture dan Math.random sudah dihapus; icon/color, API search, live KPI, dan audit filter memakai data server |
