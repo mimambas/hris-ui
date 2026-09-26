@@ -2,7 +2,10 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { jwtVerify, type JWTPayload } from 'jose';
 import { logger, setCorrelationId } from './logger';
 
-export type AuthUser = { id: string; email: string; role: string; is_active: boolean; employee_id: string | null; organization_id: string; permissions: string[] };
+import { AuthUser, requireAdmin, requirePermission, scopeOrganization } from './authorization';
+
+export { requireAdmin, requirePermission, scopeOrganization };
+export type { AuthUser };
 
 export function getSupabaseAdmin(): SupabaseClient {
   const url = process.env.SUPABASE_URL;
@@ -43,17 +46,8 @@ export async function requireUser(request: Request): Promise<AuthUser> {
   return { ...user, role: roleValue ?? user.role, permissions } as AuthUser;
 }
 
-export function requirePermission(user: AuthUser, permission: string) {
-  if (!user.permissions.includes(permission) && !['super_admin', 'hr_director'].includes(user.role)) throw new Error('FORBIDDEN');
-}
 
-export function scopeOrganization<T extends { eq: (column: string, value: string) => T }>(query: T, user: AuthUser) {
-  return query.eq('organization_id', user.organization_id);
-}
 
-export function requireAdmin(user: AuthUser) {
-  if (!['super_admin', 'hr_director', 'hr_manager', 'hr_officer'].includes(user.role)) throw new Error('FORBIDDEN');
-}
 
 export function apiError(error: unknown) {
   const message = error instanceof Error ? error.message : '';

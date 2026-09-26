@@ -19,7 +19,7 @@ Fondasi sudah ditingkatkan: tenant/RBAC migration, ownership hardening, settings
 | Fitur | Modul | Status | Referensi | Test |
 |---|---|---|---|---|
 | Organization settings persistence | backend/frontend/database | done | `frontend/src/app/api/settings/route.ts`, `frontend/src/app/(dashboard)/settings/page.tsx`, `supabase/migrations/20260925100000_organization_settings.sql` | API GET production `200`; PATCH persistence test belum dibuat |
-| Tenant organization foundation | database/backend | partial | `supabase/migrations/20260924100000_tenant_rbac_foundation.sql`, `frontend/src/lib/server/auth.ts` | Organization/membership/permission schema, backfill, predicates, dan RLS defense tersedia; authorization regression matrix (8 endpoint, unauth/forged token, scoping) lulus; permission adoption route-by-route belum lengkap |
+| Tenant organization foundation | database/backend | done | `supabase/migrations/20260924100000_tenant_rbac_foundation.sql`, `frontend/src/lib/server/auth.ts` | Organization/membership/permission schema, backfill, predicates, dan RLS defense tersedia; authorization regression matrix (8 endpoint, unauth/forged token, scoping) lulus; permission adoption selesai di seluruh route (0 `requireAdmin`), RLS defense aktif, dan unit test scoping dua organization + permission deny matrix lulus via `npm run test:authz` |
 | Audit organization scoping | frontend | done | `frontend/src/app/api/audit-log/route.ts`, audit inserts | Typecheck/build pass; complete route matrix test belum ada |
 | User guide page | frontend | done | `frontend/src/app/guide/page.tsx` | Build pass; manual browser test diperlukan |
 | Dynamic topbar identity | frontend | done | `frontend/src/components/layout/Topbar.tsx` | Typecheck/build pass |
@@ -43,7 +43,7 @@ Fondasi sudah ditingkatkan: tenant/RBAC migration, ownership hardening, settings
 | Employee bulk email | frontend/backend | partial | `employees/page.tsx` | Email outbox API dan batch queue tersedia; provider/worker/retry/DLQ belum ada |
 | Audit UI dead fixtures/KPI | frontend | done | `audit-log/page.tsx` | Fixture dan Math.random sudah dihapus; icon/color, API search, live KPI, dan audit filter memakai data server |
 | Notification delivery | backend | partial | `notification_deliveries` migration, `api/notifications/deliveries` | Durable outbox, in_app/email queue state, channel validation, retry attempts/terminal failed state, dan smoke coverage tersedia; external provider/worker dispatch belum ada |
-| Offboarding | backend/frontend | partial | No route/table/page | PRD Module 9 not started |
+| Offboarding | backend/frontend | partial | `api/offboarding/*`, `(dashboard)/offboarding/page.tsx`, `supabase/migrations/20260926100000_offboarding.sql` | Records/clearance tasks, atomic completion RPC, operational UI, dan settlement estimate tersedia; statutory settlement, PDF report, dan archived history belum |
 | Positions CRUD | backend/frontend | done | `frontend/src/app/api/positions/*`, `frontend/src/app/(dashboard)/positions/page.tsx`, `supabase/migrations/20260925110000_positions_constraints.sql` | GET/POST/PUT/DELETE tenant-scoped, delete blocked for active employees, smoke test passes |
 | Bulk employee import | backend/frontend | partial | `api/employees/import/route.ts`, `employees/page.tsx` | Batch CSV import with max 1000 rows, server validation, preview, and error report tersedia; CSV dan XLSX preview, department/position mapping, batch rollback-on-validation/insert failure sudah tersedia; background import job belum ada |
 

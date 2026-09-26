@@ -299,3 +299,9 @@
 - Added `GET /api/health` readiness probe verifying database connectivity, with smoke coverage.
 - Added structured JSON logger with correlation IDs propagated from request headers through `requireUser`.
 - Documented recovery runbook with RPO/RTO targets, PITR restore steps, and a drill log in `docs/RECOVERY.md`.
+
+### 2026-09-27 — Authorization tests
+
+- Split pure authorization helpers into `src/lib/server/authorization.ts`; `auth.ts` re-exports them without DB/network imports, `requireUser` unchanged.
+- Added `scripts/test-authz.mjs`: bypass roles, grant allow, HR-only deny matrix for the employee role, and two-organization tenant scoping.
+- Registered `npm run test:authz`; typecheck, lint, build, and smoke tests pass.
