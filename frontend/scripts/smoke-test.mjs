@@ -174,6 +174,17 @@ check('forged token rejected', forged.status !== 200);
 const emptyAuthorization = await fetch(`${BASE}/api/auth/me`, { headers: { authorization: '' } }).catch(() => null);
 check('empty authorization rejected', !emptyAuthorization || emptyAuthorization.status === 401);
 
+const notify = await call(adminToken, '/api/notifications', { method: 'POST', body: JSON.stringify({ title: `Smoke delivery ${Date.now()}`, description: 'Outbox smoke notification', category: 'system' }) });
+check('notification create', notify.status === 201 && notify.data?.id);
+if (notify.data?.id) {
+  const delivery = await call(adminToken, '/api/notifications/deliveries', { method: 'POST', body: JSON.stringify({ notification_id: notify.data.id, channel: 'in_app' }) });
+  check('notification in_app delivery recorded', delivery.status === 201 && delivery.data?.status === 'delivered');
+  const deliveries = await call(adminToken, '/api/notifications/deliveries');
+  check('notification delivery list', deliveries.status === 200 && Array.isArray(deliveries.data?.items));
+  const invalidChannel = await call(adminToken, '/api/notifications/deliveries', { method: 'POST', body: JSON.stringify({ notification_id: notify.data.id, channel: 'carrier-pigeon' }) });
+  check('notification rejects invalid channel', invalidChannel.status === 422);
+}
+
 const audit = await call(adminToken, '/api/audit-log?per_page=100');
 check('audit log read', audit.status === 200 && Array.isArray(audit.data?.items));
 check('audit log items scoped', audit.data?.items?.every((item) => Boolean(item.id)) ?? false);
