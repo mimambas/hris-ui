@@ -288,3 +288,8 @@
 - Removed hardcoded self-service KPI and recent-activity fixtures.
 - Overview now derives leave balance, attendance rate, pending leave, payslip count, and activity from loaded server data.
 - Marked Permission enforcement as done after confirming zero remaining `requireAdmin(user)` route guards.
+
+### 2026-09-27 — Payroll process statutory wiring
+
+- Payroll process route now uses the statutory calculation engine instead of placeholder fixed percentages.
+- Typecheck, lint, build, and full production smoke tests pass; payroll golden tests pass via `npm run test:payroll`.

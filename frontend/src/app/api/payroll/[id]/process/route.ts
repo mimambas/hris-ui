@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { apiError, getSupabaseAdmin, requirePermission, requireUser } from '@/lib/server/auth';
+import { calculatePayroll } from '@/lib/payroll';
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
@@ -12,8 +13,11 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const { data: employees, error: employeeError } = await client.from('employees').select('id,base_salary').eq('organization_id', user.organization_id).eq('status', 'active');
     if (employeeError) throw employeeError;
     const rows = (employees ?? []).map((employee: any) => {
-      const basic = Number(employee.base_salary ?? 0); const allowance = Math.round(basic * 0.1); const overtime = 0; const gross = basic + allowance + overtime; const pph21 = Math.round(gross * 0.05); const bpjsKes = Math.round(gross * 0.04); const bpjsTk = Math.round(gross * 0.03); const net = Math.max(0, gross - pph21 - bpjsKes - bpjsTk);
-      return { organization_id: user.organization_id, period_id: params.id, employee_id: employee.id, basic_salary: basic, allowance, overtime, gross_salary: gross, pph21, bpjs_kes: bpjsKes, bpjs_tk: bpjsTk, other_deduction: 0, net_salary: net, status: 'processed', error_message: null };
+      const basic = Number(employee.base_salary ?? 0);
+      // Statutory engine: allowance is the configured 10% of base, tax/BPJS use
+      // PTKP + progressive brackets and capped contributions (see lib/payroll.ts).
+      const calc = calculatePayroll({ basicSalary: basic, allowance: Math.round(basic * 0.1) });
+      return { organization_id: user.organization_id, period_id: params.id, employee_id: employee.id, basic_salary: calc.basic_salary, allowance: calc.allowance, overtime: calc.overtime, gross_salary: calc.gross_salary, pph21: calc.pph21, bpjs_kes: calc.bpjs_kes, bpjs_tk: calc.bpjs_tk, other_deduction: calc.other_deduction, net_salary: calc.net_salary, status: 'processed', error_message: null };
     });
     const { data: result, error: rpcError } = await client.rpc('payroll_process_atomic', {
       p_organization_id: user.organization_id,

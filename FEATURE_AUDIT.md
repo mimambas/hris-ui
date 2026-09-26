@@ -54,7 +54,7 @@ Fondasi sudah ditingkatkan: tenant/RBAC migration, ownership hardening, settings
 | Tenant read/write scope | done | `frontend/src/app/api/**`, `organization_id` migration | Semua route query tabel menyertakan `organization_id`; RLS aktif di 26 tabel dengan deny policy |
 | Permission enforcement | done | `frontend/src/lib/server/auth.ts` | Seluruh API route kini memakai `requirePermission()`; 0 route tersisa dengan coarse `requireAdmin()`; permission matrix tercakup semua modul dengan smoke matrix authorization |
 | Auth/session enterprise | partial | `auth/*`, `lib/api.ts` | MFA/SSO/SCIM/revocation/rate limiting; tokens use localStorage |
-| Payroll compliance | partial | payroll process route | Placeholder formulas; no PPh21 TER/PTKP, BPJS caps, THR, overtime, statutory exports |
+| Payroll compliance | partial | `frontend/src/lib/payroll.ts`, `api/payroll/[id]/process/route.ts` | Process route memakai PTKP/progressive PPh21/BPJS caps engine dengan golden tests; rule versioning, UAT legal, statutory export, THR/adjustment configurability, dan preview audit belum |
 | Atomic transactions | done | leave/onboarding/payroll routes | Payroll process, offboarding completion, leave approval/balance, dan onboarding create RPC sudah atomic; onboarding task/status transition kini atomic via RPC |
 | Unique attendance constraint | done | `supabase/migrations/20260926090000_attendance_unique.sql` | Unique index `(employee_id,date)` dengan dedupe; smoke test duplikat `409` lulus |
 | Atomic business sequences | done | employees/expenses routes | Organization-scoped atomic sequence RPC now generates employee IDs and expense claim numbers |

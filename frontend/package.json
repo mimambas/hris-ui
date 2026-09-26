@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test:smoke": "node scripts/smoke-test.mjs"
+    "test:smoke": "node scripts/smoke-test.mjs",
+    "test:payroll": "node --experimental-strip-types scripts/test-payroll.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.0",
