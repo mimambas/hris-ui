@@ -5,8 +5,12 @@
  */
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
+let correlationId = '';
+/** Correlates every log emitted while handling a single request. */
+export function setCorrelationId(id: string) { correlationId = id; }
+
 function emit(level: LogLevel, message: string, fields?: Record<string, unknown>) {
-  const entry = { level, message, time: new Date().toISOString(), ...fields };
+  const entry = { level, message, correlation_id: correlationId || undefined, time: new Date().toISOString(), ...fields };
   const line = JSON.stringify(entry);
   if (level === 'error') console.error(line);
   else if (level === 'warn') console.warn(line);

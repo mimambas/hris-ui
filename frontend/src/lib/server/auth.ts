@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { jwtVerify, type JWTPayload } from 'jose';
-import { logger } from './logger';
+import { logger, setCorrelationId } from './logger';
 
 export type AuthUser = { id: string; email: string; role: string; is_active: boolean; employee_id: string | null; organization_id: string; permissions: string[] };
 
@@ -12,6 +12,7 @@ export function getSupabaseAdmin(): SupabaseClient {
 }
 
 export async function requireUser(request: Request): Promise<AuthUser> {
+  setCorrelationId(request.headers.get('x-correlation-id') || crypto.randomUUID());
   const token = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
   const secret = process.env.JWT_SECRET_KEY;
   if (!token || !secret) throw new Error('UNAUTHORIZED');

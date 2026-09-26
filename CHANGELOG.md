@@ -293,3 +293,9 @@
 
 - Payroll process route now uses the statutory calculation engine instead of placeholder fixed percentages.
 - Typecheck, lint, build, and full production smoke tests pass; payroll golden tests pass via `npm run test:payroll`.
+
+### 2026-09-27 — Observability and recovery readiness
+
+- Added `GET /api/health` readiness probe verifying database connectivity, with smoke coverage.
+- Added structured JSON logger with correlation IDs propagated from request headers through `requireUser`.
+- Documented recovery runbook with RPO/RTO targets, PITR restore steps, and a drill log in `docs/RECOVERY.md`.
