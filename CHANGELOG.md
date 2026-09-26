@@ -104,3 +104,10 @@
 - Added idempotent deny policies for direct anon/authenticated table access; server service-role routes remain the app boundary.
 - Storage object RLS was not changed because the migration role is not owner of `storage.objects`; document access remains enforced by signed-URL server routes.
 - Verified production smoke tests after RLS migration.
+
+### 2026-09-26 — RLS and atomic workflow foundation
+
+- Enabled RLS defense-in-depth on 26 tenant/RBAC tables with direct client deny policies.
+- Added atomic payroll process and offboarding completion PostgreSQL functions.
+- Payroll process route now calls the atomic RPC, preventing partial delete/insert/status updates.
+- RLS migration intentionally does not alter `storage.objects` because the migration role is not its owner; server signed URLs remain the document boundary.
