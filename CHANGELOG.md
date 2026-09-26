@@ -188,3 +188,9 @@
 - Added tenant/employee-scoped PATCH `/api/documents/requests/[id]` for submitted, completed, and cancelled transitions.
 - Added invalid-status rejection and audit logging.
 - Document request workflow now has create + status transition API contracts.
+
+### 2026-09-26 — Notification delivery outbox
+
+- Added `notification_deliveries` outbox with channel/status/attempts and tenant scoping.
+- Added delivery create/list APIs with in-app delivery and invalid-channel validation.
+- Added production smoke coverage for notification create, in-app delivery, list, and invalid channel.
