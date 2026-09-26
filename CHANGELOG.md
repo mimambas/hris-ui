@@ -270,3 +270,9 @@
 - Migrated remaining workflow routes from coarse `requireAdmin()` to permission checks, including checklist, notification deliveries, onboarding, offboarding, and notification listing.
 - Employee grants are read-only for notifications/onboarding; HR roles receive workflow writes.
 - Typecheck, lint, build, and production smoke tests pass.
+
+### 2026-09-26 — Payroll statutory calculation foundation
+
+- Added pure Indonesian payroll calculation helpers for PTKP, progressive PPh21 headline brackets, BPJS wage caps, overtime multipliers, THR proration, and net-pay invariant.
+- Added payroll golden tests in `scripts/test-payroll.mjs`; all statutory tests pass.
+- Existing payroll process route is still a demo until versioned rule configuration and UAT/legal validation are added.
