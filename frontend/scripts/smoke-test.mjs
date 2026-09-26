@@ -82,6 +82,9 @@ check('employee list accessible', employeeList.status === 200);
 const forbiddenPayroll = await call(employeeToken, '/api/payroll/periods');
 check('employee cannot read payroll periods', forbiddenPayroll.status === 403 || forbiddenPayroll.status === 401);
 
+const reportXlsx = await fetch(`${BASE}/api/reports/export/xlsx?report=headcount&range=This%20month`, { headers: { authorization: `Bearer ${adminToken}` } });
+check('report XLSX export', reportXlsx.status === 200 && (reportXlsx.headers.get('content-type') || '').includes('spreadsheetml.sheet'));
+
 const reportPdf = await fetch(`${BASE}/api/reports/export?report=headcount&range=This%20month`, { headers: { authorization: `Bearer ${adminToken}` } });
 check('report PDF export', reportPdf.status === 200 && (reportPdf.headers.get('content-type') || '').includes('application/pdf'));
 
