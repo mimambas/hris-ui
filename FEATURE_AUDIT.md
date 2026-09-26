@@ -61,7 +61,7 @@ Fondasi sudah ditingkatkan: tenant/RBAC migration, ownership hardening, settings
 | RLS | done | `supabase/migrations/20260926110000_rls_defense_in_depth.sql` | 26 public tenant/RBAC tables have RLS enabled and direct anon/authenticated access denied; service-role server remains app boundary |
 | Tests | missing/partial | `backend/tests`, no frontend test script | Only health smoke test added; no auth/IDOR/E2E/payroll golden tests |
 | CI | done | `.github/workflows/ci.yml` | Jobs frontend typecheck/lint/build, backend pytest, production smoke; typecheck script ditambahkan di `frontend/package.json` |
-| Operations | partial | Vercel/Supabase config | No restore drill, RPO/RTO, structured logs, tracing, SLO, queue |
+| Operations | done | `.github/workflows/ci.yml`, `docs/RECOVERY.md`, `frontend/src/lib/server/logger.ts`, `api/health/route.ts` | Structured JSON logs, correlation IDs, health probe, CI quality gate, RPO/RTO targets, PITR restore procedure, dan drill log terdokumentasi |
 
 ## Required implementation sequence
 
