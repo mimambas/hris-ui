@@ -11,6 +11,7 @@ import ModuleHeader from '@/components/ui/ModuleHeader';
 import EmptyState from '@/components/ui/EmptyState';
 import { useToast } from '@/components/ui/Toast';
 import { parseCsv, toCsv, type CsvRow } from '@/lib/csv';
+import * as XLSX from 'xlsx';
 
 type Employee = {
   id: string;
@@ -266,8 +267,8 @@ function ImportModal({ onClose, onConfirm }: ImportModalProps) {
   const [error, setError] = useState('');
   const handleFile = async (file?: File) => {
     if (!file) return;
-    if (!file.name.toLowerCase().endsWith('.csv')) { setError('Only CSV files are supported in this preview.'); return; }
-    const parsed = parseCsv(await file.text());
+    if (!/\.(csv|xlsx|xls)$/i.test(file.name)) { setError('Only CSV, XLSX, and XLS files are supported.'); return; }
+    const parsed = file.name.toLowerCase().endsWith('.csv') ? parseCsv(await file.text()) : (() => { const workbook = XLSX.read(file, { type: 'array' }); return XLSX.utils.sheet_to_json<CsvRow>(workbook.Sheets[workbook.SheetNames[0]], { defval: '' }); })();
     setRows(parsed.map((row, index) => validateRow(row, index + 2)));
     setError(parsed.length === 0 ? 'The file has no data rows.' : '');
   };
@@ -277,9 +278,9 @@ function ImportModal({ onClose, onConfirm }: ImportModalProps) {
       <div className="p-6 space-y-4">
         <label className="block rounded-xl border-2 border-dashed border-hairline p-8 text-center hover:border-primary transition-colors cursor-pointer">
           <Upload size={22} className="mx-auto text-primary mb-2" />
-          <span className="text-sm font-semibold text-ink">Choose a CSV file</span>
+          <span className="text-sm font-semibold text-ink">Choose a CSV or XLSX file</span>
           <span className="block text-xs text-muted mt-1">Required columns: name, department, position</span>
-          <input type="file" accept=".csv,text/csv" className="sr-only" onChange={(event) => handleFile(event.target.files?.[0])} />
+          <input type="file" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="sr-only" onChange={(event) => handleFile(event.target.files?.[0])} />
         </label>
         {error && <p className="text-xs text-semantic-down">{error}</p>}
         {rows.length > 0 && <div className="overflow-x-auto rounded-lg border border-hairline"><table className="w-full min-w-[560px] text-xs"><thead><tr className="bg-surface-soft"><th className="table-header">Row</th><th className="table-header">Name</th><th className="table-header">Department</th><th className="table-header">Status</th><th className="table-header">Validation</th></tr></thead><tbody>{rows.slice(0, 8).map((item) => <tr key={item.index} className="border-t border-hairline-soft"><td className="table-cell">{item.index}</td><td className="table-cell text-ink">{item.row.name || '—'}</td><td className="table-cell">{item.row.department || '—'}</td><td className="table-cell">{item.valid ? <span className="text-cta font-semibold">Valid</span> : <span className="text-semantic-down font-semibold">Error</span>}</td><td className="table-cell text-muted">{item.errors[0] || 'Ready to import'}</td></tr>)}</tbody></table></div>}
