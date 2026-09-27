@@ -12,6 +12,7 @@ declare
     'onboarding_tasks','notifications','recruitment_vacancies',
     'recruitment_candidates','organization_memberships','organization_settings',
     'report_generations','checklist_templates','document_requests',
+    'notification_deliveries','email_outbox',
     'offboarding_records','offboarding_tasks','roles','role_permissions'
   ];
 begin

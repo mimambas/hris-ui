@@ -33,6 +33,7 @@ export async function POST(request: Request) {
       subject,
       body: message,
       created_by: user.id,
+      next_attempt_at: new Date().toISOString(),
     }));
     const { data: queued, error: queueError } = await client.from('email_outbox').insert(rows).select('id,recipient_email,status');
     if (queueError) throw queueError;

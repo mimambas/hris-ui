@@ -182,7 +182,7 @@ Untuk employee, daftar dokumen dibatasi ke dokumen milik sendiri.
 4. Gunakan category filter dan search.
 5. Hapus satu notifikasi atau gunakan **Clear all**.
 
-Notifikasi saat ini persisten di database, tetapi belum terhubung ke delivery email, SMS, push notification, retry queue, atau dead-letter queue.
+Notifikasi saat ini persisten di database dan email/SMS masuk durable outbox. Provider eksternal belum dikonfigurasi, sehingga delivery email/SMS tetap berstatus `pending`/`queued` dan tidak boleh dianggap terkirim. Retry hanya menjadwalkan ulang row untuk worker; dead-letter queue dan provider delivery akan diaktifkan setelah konfigurasi provider tersedia.
 
 ### Recruitment
 

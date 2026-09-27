@@ -27,6 +27,11 @@ class Settings(BaseSettings):
     # Celery
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
+    NOTIFICATION_WORKER_ENABLED: bool = False
+    NOTIFICATION_WORKER_BATCH_SIZE: int = 25
+    NOTIFICATION_LEASE_SECONDS: int = 300
+    NOTIFICATION_MAX_ATTEMPTS: int = 3
+    NOTIFICATION_BACKOFF_BASE_SECONDS: int = 60
 
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:8000"]

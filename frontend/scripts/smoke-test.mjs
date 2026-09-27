@@ -227,7 +227,7 @@ if (notify.data?.id) {
   const delivery = await call(adminToken, '/api/notifications/deliveries', { method: 'POST', body: JSON.stringify({ notification_id: notify.data.id, channel: 'email' }) });
   check('notification email delivery queued', delivery.status === 201 && delivery.data?.status === 'pending');
   const deliveryRetry = await call(adminToken, `/api/notifications/deliveries/${delivery.data.id}/retry`, { method: 'POST' });
-check('notification delivery retry', deliveryRetry.status === 200 && deliveryRetry.data?.attempts >= 1);
+check('notification retry queued without provider delivery', deliveryRetry.status === 200 && deliveryRetry.data?.status === 'pending' && deliveryRetry.data?.last_error === 'Queued for provider dispatch');
 
 const deliveries = await call(adminToken, '/api/notifications/deliveries');
   check('notification delivery list', deliveries.status === 200 && Array.isArray(deliveries.data?.items));
