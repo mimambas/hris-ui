@@ -1,9 +1,12 @@
 # Product Requirements Document (PRD)
 ## HRIS — Human Resource Information System
 
-**Version:** 1.0.0  
-**Date:** 2026-09-21  
-**Status:** Final Draft  
+**Versi dokumen:** 2.0
+**Tanggal:** 2026-09-28
+**Status:** Target-state requirements; baseline kondisi implementasi dirujuk ke `FEATURE_AUDIT.md` (27 Sep 2026).
+**Sumber acuan:** repository saat ini—kode `frontend/`, migrasi `supabase/migrations/`, pengujian, CI, `README.md`, `FEATURE_AUDIT.md`, dan `docs/RECOVERY.md`. Dokumen ini bukan pernyataan bahwa seluruh target telah tersedia.
+
+> **Cara membaca status:** **Tersedia** berarti fungsi teridentifikasi di kode dan/atau pengujian yang dirujuk audit; bukan jaminan telah memenuhi seluruh acceptance criteria target. **Parsial** berarti ada fondasi/fungsi terbatas dengan gap yang disebutkan. **Target** berarti persyaratan produk yang belum boleh dianggap sudah diimplementasikan. Baseline rinci berubah seiring implementasi; `FEATURE_AUDIT.md` adalah inventaris status teknis terkini.
 
 ---
 
@@ -11,1108 +14,419 @@
 
 ### Problem Statement
 
-Perusahaan dengan 100–2000+ karyawan masih mengandalkan spreadsheet, WhatsApp, dan proses manual untuk mengelola data karyawan, absensi, cuti, penggajian, serta rekrutmen — yang menyebabkan error data, waktu payroll 3–5 hari kerja, ketidakpatuhan terhadap regulasi Ketenagakerjaan RI, dan beban administrasi HR yang berlebihan.
+HRIS menyediakan fondasi terpadu untuk data karyawan, proses HR, payroll, dan self-service dalam satu aplikasi tenant-aware. Implementasi saat ini sudah mencakup banyak modul dan kontrol dasar, tetapi tingkat penyelesaian tidak merata: beberapa tampilan masih dummy/parsial, integrasi pengiriman belum aktif, dan aturan payroll serta kebijakan HR masih memerlukan konfigurasi dan validasi bisnis/legal.
 
 ### Proposed Solution
 
-HRIS adalah platform web terpadu yang mengotomasi siklus hidup karyawan — dari rekrutmen, onboarding, manajemen data, absensi, penggajian (termasuk PPh 21 & BPJS), hingga offboarding — dengan self-service portal untuk karyawan dan approval workflow untuk manager.
+Kembangkan aplikasi web HRIS yang saat ini dibangun dengan Next.js dan Supabase menjadi sistem operasional multi-organisasi dengan data tersimpan, akses berbasis izin, alur persetujuan yang dapat diaudit, dan pengalaman konsisten dari employee lifecycle sampai laporan. Tutup gap berdasarkan prioritas, tanpa mengklaim integrasi, kepatuhan, ataupun otomasi sebelum diuji dan disetujui pemilik bisnis.
 
 ### Success Criteria
 
-| # | KPI | Target | Measurement |
-|---|-----|--------|-------------|
-| 1 | Payroll processing time | ≤ 1 hari kerja (dari 3–5 hari) | Waktu dari input absensi hingga slip gaji final tersedia |
-| 2 | Employee self-service adoption | ≥ 80% dalam 3 bulan setelah launch | % karyawan aktif使用 portal ESS per bulan |
-| 3 | Data accuracy rate | ≥ 99.5% | Error rate dalam data master karyawan (audit quarterly) |
-| 4 | System uptime | ≥ 99.5% | Monthly availability monitoring (Sentry + CloudWatch) |
-| 5 | HR admin time reduction | ≥ 60% | Jam kerja HR per minggu sebelum vs setelah implementasi |
+Target numerik belum ditentukan pemilik bisnis. KPI berikut menjadi kontrak pengukuran; nilai target, periode, baseline, dan pemilik masing-masing **TBD**. Jangan mengganti TBD dengan angka asumsi.
 
----
+| KPI | Definisi pengukuran | Target |
+|---|---|---|
+| Akurasi dan rekonsiliasi payroll | Proporsi payroll period yang lolos rekonsiliasi input, hasil hitung, approval, dan total pembayaran; definisi error disepakati Finance/HR | TBD |
+| Keberhasilan penyelesaian tugas HR | Proporsi workflow leave, onboarding/offboarding, expense, dan document request yang selesai tanpa koreksi manual; ukur per workflow | TBD |
+| Adopsi employee self-service | Pengguna karyawan aktif bulanan dibanding karyawan eligible; event/definisi aktif ditetapkan | TBD |
+| Kualitas dan keamanan data | Jumlah insiden akses lintas tenant/role, perubahan tanpa audit, dan data invalid yang lolos validasi | TBD; insiden kritis ditargetkan 0 setelah definisi severity dan periode disepakati |
+| Ketersediaan dan performa | Availability serta p95 latency endpoint kritis, dilaporkan terpisah per lingkungan | TBD |
+
+**Keputusan yang dibutuhkan:** target KPI, ukuran organisasi/paket pelanggan, wilayah dan aturan ketenagakerjaan yang didukung, pemilik proses HR/Payroll, provider email/penyimpanan, serta target ketersediaan dan pemulihan.
 
 ## 2. User Experience & Functionality
 
-### 2.1 User Personas
-
-#### Persona 1: HR Manager — "Rina"
-
-- **Role:** HR Manager di perusahaan manufaktur 500 karyawan
-- **Pain Points:** 
-  - Butuh 5 hari untuk proses payroll setiap bulan
-  - Data karyawan tercecer di 5 spreadsheet berbeda
-  - Sulit tracking siapa yang sudah upload dokumen kontrak
-- **Goals:** Satu sumber data karyawan, payroll cepat, laporan real-time
-- **Tech Savvy:** Medium — pakai laptop Windows, browser Chrome
-
-#### Persona 2: Department Manager — "Budi"
-
-- **Role:** Manager departemen Teknik, 30 orang di bawahnya
-- **Pain Points:**
-  - Harus cek WhatsApp untuk approve cuti
-  - Tidak tahu sisa cuti team tanpa tanya HR
-  - Lembur team tidak tercatat dengan baik
-- **Goals:** Approve cuti/lembur dari satu tempat, lihat attendance team
-- **Tech Savvy:** Medium-High — aktif pakai laptop & handphone
-
-#### Persona 3: Karyawan — "Sari"
-
-- **Role:** Staff Marketing, baru masuk 6 bulan
-- **Pain Points:**
-  - Tidak tahu sisa cuti
-  - Slip gaji dikirim via email tanpa penjelasan potongan
-  - Harus chat HR untuk update rekening bank
-- **Goals:** Lihat payslip jelas, apply cuti mudah, update profil sendiri
-- **Tech Savvy:** High — mobile-first, aktif pakai handphone
-
-#### Persona 4: Finance Officer — "Andi"
-
-- **Role:** Staff Finance yang handle pembayaran gaji
-- **Pain Points:**
-  - Rekap reimbursement manual dari 20+ email
-  - File bank transfer harus buat manual dari Excel
-  - PPh 21 dihitung manual pakai rumus Excel
-- **Goals:** Export file bank transfer siap pakai, laporan pajak otomatis
-- **Tech Savvy:** High — Excel power user, paham sistem
-
-#### Persona 5: Recruiter — "Dewi"
-
-- **Role:** HR Staff yang handle rekrutmen
-- **Pain Points:**
-  - Lamaran masuk dari berbagai platform (email, LinkedIn, website)
-  - Sulit tracking status kandidat per tahap
-  - Jadwal interview sering bentrok
-- **Goals:** Satu tempat manage semua kandidat, pipeline visual
-- **Tech Savvy:** High — multi-platform user
-
----
-
-### 2.2 User Stories & Acceptance Criteria
-
-#### Module 1: Employee Master Data
-
-**Story 1.1**  
-As an **HR Officer**, I want to **create a new employee profile** so that **all employee data is stored in one centralized system**.  
-**Acceptance Criteria:**
-- Form fields: nama lengkap, NIK, NPWP, tempat/tanggal lahir, jenis kelamin, alamat, kontak darurat, pendidikan, riwayat pekerjaan, rekening bank
-- Employee ID auto-generated (format: `EMP-YYYYMMDD-XXX`)
-- NIK validated as unique (16 digit, numeric)
-- NPWP validated as unique (15 digit format `XX.XXX.XXX.X-XXX.XXX`)
-- Duplication check on NIK and NPWP — reject if duplicate
-- All create actions logged in audit trail (user, timestamp, field changes)
-- Redirect to profile detail page after successful creation
-
-**Story 1.2**  
-As an **HR Manager**, I want to **bulk import employees via CSV/Excel** so that **I don't have to manually input 100+ employees during initial setup**.  
-**Acceptance Criteria:**
-- Upload accepts `.csv`, `.xlsx` (max 5MB, max 1000 rows)
-- System validates each row: required fields, data format, uniqueness
-- Returns validation report: rows OK, rows with errors (with line number & reason)
-- On success, all valid rows imported; error rows shown for correction
-- Preview mode: show first 10 rows before final import
-
-**Story 1.3**  
-As an **Employee (ESS)**, I want to **view and update my own profile** so that **my personal information stays current without bothering HR**.  
-**Acceptance Criteria:**
-- Self-edit allowed fields: alamat, kontak darurat, rekening bank, nomor handphone
-- Changes to sensitive fields (NIK, NPWP, nama) require HR approval
-- Profile shows employment history timeline
-- All documents uploaded by employee visible in profile
-
-**Story 1.4**  
-As an **HR Manager**, I want to **view an employee's complete history** (position changes, salary changes, leave history) so that **I have full context for decisions**.  
-**Acceptance Criteria:**
-- Tabbed view: Profile, Employment, Documents, Attendance History, Leave History, Payroll History
-- Each tab shows chronological data
-- Data changes tracked with before/after values
-- Export individual employee report (PDF)
-
----
-
-#### Module 2: Organizational Structure
-
-**Story 2.1**  
-As an **HR Director**, I want to **visualize the company org chart** so that **I can understand and manage the hierarchy**.  
-**Acceptance Criteria:**
-- Interactive tree visualization (zoom, pan, collapse/expand)
-- Nodes show: photo, name, position, department
-- Click node → navigate to employee profile
-- Support up to 8 hierarchy levels
-- Org chart updates automatically when hierarchy changes
-
-**Story 2.2**  
-As an **HR Manager**, I want to **create and manage departments and positions** so that **the organizational structure reflects reality**.  
-**Acceptance Criteria:**
-- CRUD operations for departments (name, code, parent, head, cost center)
-- CRUD operations for positions (title, level, grade, department, salary range)
-- Validation: department cannot be deleted if has active employees
-- Position deletion blocked if occupied by active employee
-- Hierarchical department tree with parent-child relationships
-
----
-
-#### Module 3: Attendance Management
-
-**Story 3.1**  
-As an **Employee**, I want to **check in and check out via web** so that **my attendance is recorded without a physical device**.  
-**Acceptance Criteria:**
-- Check-in button records timestamp + optional GPS coordinates
-- Check-out button records timestamp
-- Late detection: flag if check-in > configured grace period (default: 10 min)
-- Early leave detection: flag if check-out < configured time
-- Cannot check in twice per day; cannot check out before check-in
-- Dashboard shows today's attendance status in real-time
-
-**Story 3.2**  
-As an **HR Officer**, I want to **input attendance manually** for cases where system check-in fails (power outage, device error).  
-**Acceptance Criteria:**
-- Manual input form: employee, date, check-in, check-out, reason
-- Requires HR Officer+ role
-- Manual entries flagged as "Manual" in attendance log
-- Approval required from HR Manager for manual entries
-- Audit trail: who entered, when, what was entered
-
-**Story 3.3**  
-As a **Department Manager**, I want to **see my team's daily attendance summary** so that **I know who's present, late, or absent**.  
-**Acceptance Criteria:**
-- Team attendance dashboard: grid view (employee × date)
-- Color-coded: green=present, yellow=late, red=absent, blue=WFH, gray=leave
-- Filter by: date range, status
-- Export to Excel
-- Real-time updates (auto-refresh every 30 seconds)
-
-**Story 3.4**  
-As an **HR Manager**, I want to **configure attendance rules** (grace period, overtime thresholds, work schedules) so that **the system matches company policy**.  
-**Acceptance Criteria:**
-- Configurable: grace period (minutes), overtime min duration, max overtime per day
-- Work schedule types: Regular (Mon-Fri), Flexible (window check-in), Shift-based
-- Shift scheduling: create weekly/monthly shifts per employee/team
-- Configuration changes logged in audit trail
-- Changes take effect from configured effective date (not retroactive)
-
----
-
-#### Module 4: Leave Management
-
-**Story 4.1**  
-As an **Employee**, I want to **submit a leave request** with type, dates, and reason so that **I can get approval without email/WhatsApp**.  
-**Acceptance Criteria:**
-- Leave types: Annual (AL), Sick (SL), Personal (PL), Maternity (ML), Paternity (PT), Bereavement (BL), Marriage (MR), Hajj (HJ), Unpaid (UL), Company Leave (CB)
-- Form validates: dates within range, no overlap with existing approved leave
-- System shows remaining balance for selected leave type before submission
-- Sick leave > 2 days requires document upload
-- Submit triggers notification to direct manager
-
-**Story 4.2**  
-As a **Department Manager**, I want to **approve or reject leave requests** from my team with a reason so that **I maintain workforce coverage**.  
-**Acceptance Criteria:**
-- Pending requests appear in approval queue (sorted by urgency)
-- Approve: auto-update leave balance, update attendance calendar, notify employee
-- Reject: mandatory reason field, notify employee
-- Leave > 3 consecutive working days requires additional HR Director approval
-- Delegation: manager can delegate approval to another person during absence
-
-**Story 4.3**  
-As an **Employee**, I want to **see my leave balance and history** so that **I know how many days I have left**.  
-**Acceptance Criteria:**
-- Dashboard widget: remaining days per leave type (current year)
-- Leave history: list of all requests with status (pending/approved/rejected)
-- Leave calendar view: shows approved leaves for team (anonymized for other teams)
-- Annual leave resets on January 1 each year
-- New employees: pro-rated balance based on join date
-
----
-
-#### Module 5: Payroll
-
-**Story 5.1**  
-As an **HR Officer**, I want to **run monthly payroll** with auto-calculation of salary, deductions, and tax so that **processing time drops from 5 days to 1 day**.  
-**Acceptance Criteria:**
-- Payroll period selection: month/year
-- Auto-sync attendance data: work days, late, absence, overtime
-- Auto-calculate components:
-  - Earnings: basic salary, fixed allowances, overtime (1.5x/2x/3x based on rules)
-  - Deductions: BPJS Kesehatan (4% employer + 1% employee), JHT (3.7% + 2%), JP (2% + 1%), PPh 21 (progressive tax table)
-- Manual adjustments: bonus, commission, special deduction
-- Net pay = Total Earnings - Total Deductions
-- Calculation completes for 1000 employees in ≤ 30 seconds
-- Draft mode: preview before final submission
-
-**Story 5.2**  
-As an **HR Manager**, I want to **approve payroll runs** so that **disbursement is authorized**.  
-**Acceptance Criteria:**
-- Two-step approval: HR Officer (process) → HR Manager (approve)
-- Approval shows summary: total payroll, per-department breakdown, comparison with previous month
-- Reject: return to draft with comments
-- Approved payroll cannot be modified (creates new adjustment record instead)
-- Full audit trail of all payroll changes
-
-**Story 5.3**  
-As an **Employee (ESS)**, I want to **view my payslip** so that **I understand my salary breakdown**.  
-**Acceptance Criteria:**
-- Payslip shows: earnings (itemized), deductions (itemized), net pay
-- PPh 21 calculation breakdown visible
-- BPJS contribution breakdown visible
-- Download payslip as PDF
-- History: all past payslips accessible
-- Payslips available only after payroll marked as "paid"
-
-**Story 5.4**  
-As a **Finance Officer**, I want to **generate bank transfer file** so that **I can upload directly to the banking system**.  
-**Acceptance Criteria:**
-- Export format per bank (BCA, Mandiri, BRI, BNI — CSV format)
-- File includes: employee name, bank account, amount, reference
-- Auto-reconcile: match payroll items to bank accounts
-- Error handling: employees without bank account flagged
-- Generate summary report: total transfer, per-bank breakdown
-
-**Story 5.5**  
-As an **HR Manager**, I want to **auto-calculate THR** (Tunjangan Hari Raya) so that **compliance with PP 78/2015 is maintained**.  
-**Acceptance Criteria:**
-- THR = (Basic Salary + Fixed Allowances) × (months worked / 12)
-- Trigger: configurable (1 month before Hari Raya)
-- Pro-rata for employees with < 12 months tenure
-- THR only for employees with ≥ 1 month tenure
-- Separate payroll run for THR (not mixed with regular payroll)
-
----
-
-#### Module 6: Expense / Reimbursement
-
-**Story 6.1**  
-As an **Employee**, I want to **submit an expense claim** with receipt so that **I get reimbursed for work-related expenses**.  
-**Acceptance Criteria:**
-- Claim types: Transport, Meal, Accommodation, Communication, Training, Other
-- Upload receipt image/PDF (max 10MB per file)
-- Fields: date, type, amount (IDR), description, receipt
-- Claims > Rp 100.000 require receipt upload
-- Submit within 30 days of expense date
-- Auto-route to direct manager for approval
-
-**Story 6.2**  
-As a **Department Manager**, I want to **approve or reject expense claims** so that **only valid business expenses are reimbursed**.  
-**Acceptance Criteria:**
-- View claim details + receipt image preview
-- Approve: mark for inclusion in next payroll
-- Reject: mandatory reason, notify employee
-- Claims > Rp 5.000.000 require additional approval from HR Director
-- Bulk approve: select multiple claims, approve at once
-
----
-
-#### Module 7: Recruitment
-
-**Story 7.1**  
-As a **Recruiter**, I want to **create a job posting** so that **I can attract candidates**.  
-**Acceptance Criteria:**
-- Fields: title, department, location, description, requirements, salary range, employment type
-- Template library for common positions
-- Approval required from HR Manager before publishing
-- Publish to: internal job board (built-in)
-- Status: Draft → Pending Approval → Published → Closed
-
-**Story 7.2**  
-As a **Recruiter**, I want to **track applicants through a pipeline** so that **I never lose track of a candidate**.  
-**Acceptance Criteria:**
-- Pipeline stages (configurable): Screening → Assessment → Interview (HR) → Interview (Technical) → Final Interview → Offer → Hired/Rejected
-- Kanban board view: drag & drop between stages
-- Per-candidate: notes, interview scores, source tracking
-- Bulk status update (reject multiple candidates at once)
-- Source tracking: Job Board, Referral, Walk-in, Social Media
-
-**Story 7.3**  
-As a **Recruiter**, I want to **schedule interviews** integrated with the pipeline so that **scheduling conflicts are avoided**.  
-**Acceptance Criteria:**
-- Schedule interview: date, time, interviewer(s), type (Phone/Video/In-person)
-- Check interviewer availability (calendar view)
-- Auto-notify interviewer and candidate
-- Interview notes and scoring form
-- Reschedule with audit trail
-
----
-
-#### Module 8: Onboarding
-
-**Story 8.1**  
-As an **HR Officer**, I want to **create and track onboarding checklists** for new hires so that **nothing falls through the cracks**.  
-**Acceptance Criteria:**
-- Template checklist (configurable per department/position)
-- Auto-triggered when hire is confirmed
-- Tasks assigned to responsible parties (IT, HR, Manager)
-- Progress tracking: percentage complete per new hire
-- Reminder notifications for overdue tasks
-- Pre-boarding tasks (before join date) + Day 1 + Week 1 + Month 1
-
-**Story 8.2**  
-As a **New Hire**, I want to **submit required documents** via a portal so that **I don't need to email them manually**.  
-**Acceptance Criteria:**
-- Document submission checklist (KTP, NPWP, ijazah, SKCK, etc.)
-- Upload interface with drag & drop
-- Status tracking: submitted, verified, pending
-- HR can mark documents as verified/returned
-
----
-
-#### Module 9: Offboarding
-
-**Story 9.1**  
-As an **HR Officer**, I want to **manage the offboarding process** so that **all clearance steps are completed before the employee's last day**.  
-**Acceptance Criteria:**
-- Trigger: resignation letter accepted or termination memo
-- Clearance checklist: asset return, task handover, access revocation
-- Final settlement calculation: pro-rata salary, unused leave compensation, outstanding deductions
-- Generate Final Settlement Report (PDF)
-- Employee status updated to "Inactive" after completion
-- All data archived (not deleted)
-
----
-
-#### Module 10: Document Management
-
-**Story 10.1**  
-As an **HR Officer**, I want to **upload and organize employee documents** so that **all documents are searchable and accessible**.  
-**Acceptance Criteria:**
-- Categories: Personal, Employment, Company
-- File types: PDF, JPEG, PNG, DOCX (max 10MB per file)
-- Access control: HR sees all; employee sees own documents only
-- Version control: upload new version, keep history
-- Expiry alerts: auto-notify 30 days before document expiry (KTP, contract)
-- Search by: employee name, document type, date range
-
----
-
-#### Module 11: Reporting & Analytics
-
-**Story 11.1**  
-As an **HR Director**, I want to **view an executive dashboard** with real-time KPIs so that **I can make data-driven decisions**.  
-**Acceptance Criteria:**
-- KPI cards: Total Headcount, New Hires (MTD), Turnover Rate (MTD/YTD), Total Payroll (MTD), Attendance Rate
-- Charts (Recharts/Nivo):
-  - Headcount trend (line, 12 months)
-  - Turnover rate trend (line, 12 months)
-  - Department distribution (pie/donut)
-  - Payroll distribution by department (bar)
-  - Leave usage by type (stacked bar)
-  - Age & gender distribution
-- Alerts panel: contracts expiring (30 days), probation ending (30 days), birthdays this month
-- Dashboard loads in ≤ 3 seconds
-
-**Story 11.2**  
-As an **HR Manager**, I want to **generate standard reports** so that **management gets the data they need**.  
-**Acceptance Criteria:**
-- Reports available (PDF + Excel):
-  - Headcount Report (by department, position, status)
-  - Turnover Report (monthly, with reasons)
-  - Attendance Summary (per employee, per department)
-  - Leave Balance Report
-  - Overtime Report
-  - Payroll Summary
-  - PPh 21 Report
-  - BPJS Report
-  - New Hire Report
-  - Exit Report
-  - Demographics Report
-- Date range filter on all reports
-- Export in ≤ 60 seconds for full-month data
-
----
-
-#### Module 12: Role-Based Access Control (RBAC)
-
-**Story 12.1**  
-As a **Super Admin**, I want to **manage user roles and permissions** so that **each user only accesses what they're authorized for**.  
-**Acceptance Criteria:**
-- Predefined roles: Super Admin, HR Director, HR Manager, HR Officer, Recruiter, Finance Officer, Department Manager, Team Leader, Employee (ESS)
-- Permission matrix: module × action (View, Create, Update, Delete, Approve, Export)
-- Custom role creation: combine permissions from matrix
-- Role assignment: one primary role per user
-- Data-level access: Manager sees only own department; Employee sees only own data
-- Changes to roles logged in audit trail
-
-**Story 12.2**  
-As an **Employee (ESS)**, I want to **access only my own data** (profile, payslip, leave balance) so that **company information stays confidential**.  
-**Acceptance Criteria:**
-- Employee can view: own profile, own payslips, own leave history/balance, own attendance
-- Employee can update: own address, contact, bank account, emergency contact
-- Employee can submit: leave requests, expense claims
-- Employee cannot view: other employees' data, payroll reports, company financial data
-- Enforced at API level (not just UI)
-
----
-
-### 2.3 Non-Goals (v1.0)
-
-| Non-Goal | Reason | Planned Version |
-|----------|--------|-----------------|
-| Learning Management System (LMS) | Out of HR core scope | v2.0 |
-| Performance appraisal / OKR | Complex module, needs separate design | v2.0 |
-| Employee engagement / surveys | Not core HRIS | v2.0 |
-| Mobile native app (iOS/Android) | Responsive web is sufficient for v1.0 | v2.0 |
-| Biometric/fingerprint device integration | Requires physical hardware; manual input for MVP | v1.1 |
-| Multi-company / multi-tenant | Adds architectural complexity | v2.0 |
-| International payroll (multi-currency) | Focus on Indonesia only | v3.0 |
-| AI-powered features (chatbot, auto-classification) | Needs separate AI evaluation | v2.0 |
-
----
+### 2.1 Prinsip produk dan lingkup
+
+- Satu aplikasi untuk HR, manager, Finance, recruiter, dan karyawan; navigasi serta aksi mengikuti role, permission, dan organisasi aktif.
+- Data bisnis harus bersumber dari API/database. Tidak boleh ada fixture/hardcoded success path yang menyamar sebagai data operasional.
+- Setiap halaman memuat state loading, kosong, berhasil, dan error yang dapat dipahami; aksi tulis memberi konfirmasi dan hasil yang dapat diverifikasi setelah refresh.
+- Semua tanggal, mata uang, periode, status, dan kebijakan mengikuti konfigurasi organisasi yang disepakati. Zona waktu, locale, dan kalender kerja default masih **TBD**.
+- Akses ditolak secara default. Pembatasan UI bukan pengganti pemeriksaan otorisasi server.
+
+### 2.2 User Personas
+
+1. **HR administrator / HR officer** — mengelola data karyawan, dokumen, absensi, cuti, onboarding/offboarding, dan komunikasi operasional. Perlu validasi, bulk action terkontrol, serta jejak audit.
+2. **HR manager / HR director** — mengawasi organisasi, menyetujui alur, memantau laporan, dan mengatur kebijakan. Perlu cakupan organisasi, kontrol akses, status workflow, dan audit yang jelas.
+3. **Line manager** — melihat anggota tim sesuai cakupan yang diizinkan, mengelola/menyetujui permintaan tim, serta melihat kalender dan struktur pelaporan. Tidak boleh melihat data sensitif di luar izin.
+4. **Karyawan** — mengakses profil/payslip milik sendiri dan mengajukan atau menindaklanjuti proses yang tersedia. Tidak boleh melihat data karyawan lain atau mengubah data payroll terproteksi.
+5. **Finance / payroll operator** — menyiapkan, memeriksa, memproses, dan mengunci payroll serta expense sesuai pemisahan tugas. Peran dan alur approval final perlu disepakati.
+6. **Recruiter** — mengelola vacancy dan kandidat, interview, dan catatan yang dibatasi akses. Retensi dan klasifikasi data kandidat perlu ditentukan.
+7. **Organization owner / system operator** — menyiapkan tenant, pengguna, konfigurasi, backup, pemantauan, dan dukungan operasional tanpa mencampur data tenant.
+
+### 2.3 User Stories & Acceptance Criteria
+
+Status baseline di setiap area mengacu ke audit kode per 27 Sep 2026, bukan bukti bahwa semua kriteria target di bawah telah lulus.
+
+#### A. Tenant, akun, role, dan organisasi
+
+**Status baseline:** fondasi organisasi, membership, permission, pemeriksaan server, scope `organization_id`, dan RLS deny akses client langsung tersedia. Login/logout/me/refresh dan pencatatan sesi ada. MFA, SSO, SCIM, rate limiting, serta sejumlah kontrol session enterprise belum lengkap; audit mencatat token pada client memakai localStorage.
+
+**Story A1 —** Sebagai pengguna, saya ingin login dan hanya mengakses organisasi serta tindakan yang menjadi hak saya, agar data HR terlindungi.
+
+**Acceptance criteria**
+- Setiap endpoint privat menolak tanpa token valid; token/session kedaluwarsa, revoked, atau user/membership nonaktif tidak dapat dipakai.
+- Backend mendapatkan user, organisasi, role, dan permission dari identitas tervalidasi; tidak menerima organization/role dari input klien sebagai sumber otoritatif.
+- Seluruh query baca/tulis tenant membatasi organisasi, termasuk relasi, pencarian, export, bulk action, dan error path. ID lintas tenant tidak membocorkan keberadaan atau isi record.
+- Permission diperiksa pada setiap endpoint dan aksi sensitif; denial mengembalikan status yang sesuai dan tercatat tanpa menulis perubahan parsial.
+- Perubahan role, membership, status akun, dan konfigurasi tenant diaudit dengan aktor, waktu, organisasi, objek, dan hasil; rahasia tidak masuk log.
+- RLS dan privilege database tetap deny akses langsung bagi role client; secret service-role hanya berada di server.
+- Tambahkan regression test untuk unauthenticated, forged/stale/revoked session, permission deny, IDOR, lintas tenant read/write, ekspor, dan bulk workflow.
+- Evaluasi migrasi dari localStorage ke cookie HttpOnly/Secure/SameSite dan mitigasi CSRF/XSS sebelum dinyatakan selesai; target autentikasi enterprise (MFA/SSO/SCIM) **TBD**.
+
+#### B. Employee master, directory, departments, positions, org chart
+
+**Status baseline:** employee/departments/positions API serta positions CRUD ada; pembuatan ID bisnis atomic; employee import CSV/XLSX dengan preview, validasi batch dan batas 1.000 baris tercatat ada. Audit menyebut Directory masih hardcoded dan detail employee masih placeholder; org chart parsial dan belum punya interaksi hierarki penuh. Jangan menganggap halaman employee sudah terhubung penuh hanya karena API tersedia.
+
+**Story B1 —** Sebagai HR, saya ingin mencari dan memelihara profil karyawan serta struktur organisasi dari data tersimpan.
+
+**Acceptance criteria**
+- Directory, detail, create/edit, departemen, posisi, manager/reporting line, status kerja, dan data profil menggunakan API yang tenant-scoped; tidak menampilkan fixture sebagai record nyata.
+- Field wajib, format, uniqueness dalam organisasi, referential integrity department/position/manager, tanggal efektif, dan perubahan status divalidasi server-side.
+- Field sensitif (mis. kompensasi, identitas, rekening, informasi privat) disaring sesuai permission dan kebutuhan; matrix field-level access perlu persetujuan pemilik data.
+- Import CSV/XLSX menyediakan template/kolom yang didukung, preview hasil mapping, validasi per baris, ringkasan duplikat/error, konfirmasi sebelum commit, dan hasil batch yang dapat diunduh. Batas 1.000 saat ini adalah batas baseline, bukan target skala; kebutuhan volume dan job async TBD.
+- Kegagalan validasi/penyimpanan tidak boleh menghasilkan setengah batch tanpa laporan eksplisit; operasi final bersifat atomic sesuai kontrak import.
+- Org chart menampilkan hierarchy dari manager relation, empty/error state, serta zoom/pan/collapse dan batas kedalaman yang ditetapkan melalui usability test; aturan siklus/manager invalid ditolak.
+- Perubahan data tercatat audit dan tersaji setelah refresh.
+
+#### C. Attendance dan calendar
+
+**Status baseline:** attendance API dan unique constraint `(employee_id,date)` tersedia. Calendar membaca sebagian data leave/employee/attendance; event types lengkap, query rentang, hari libur/perusahaan, dan export belum tersedia.
+
+**Story C1 —** Sebagai HR/manager, saya ingin memeriksa kehadiran dan kalender kerja sesuai hak akses.
+
+**Acceptance criteria**
+- Attendance dapat dicatat/dilihat/diperbaiki sesuai role; duplikat tanggal/karyawan ditolak deterministik, termasuk request bersamaan.
+- Kebijakan sumber attendance (manual/import/perangkat), shift, timezone, koreksi, geolocation, dan approval ditetapkan sebelum implementasi fitur terkait; semuanya **TBD**.
+- Calendar mengambil event dari sumber persisten dan membatasi rentang tanggal, organisasi, serta visibility per karyawan/team.
+- Tipe event, hari libur, cuti, jadwal, hari perusahaan, locale/timezone, dan ekspor hanya ditampilkan setelah kontrak dan sumber data ditetapkan.
+- Koreksi dan perubahan status ter-audit; tidak ada nilai acak atau event dummy.
+
+#### D. Leave dan saldo cuti
+
+**Status baseline:** request/approve/reject/cancel dan endpoint pembacaan saldo ada; atomic workflow/RPC tersedia menurut audit. Kebijakan accrual, saldo accounting lengkap, approval delegation/escalation, dan konfigurasi belum lengkap.
+
+**Story D1 —** Sebagai karyawan, saya ingin mengajukan cuti dan mengetahui saldo/status; sebagai approver, saya ingin memutuskan permintaan dengan perhitungan yang konsisten.
+
+**Acceptance criteria**
+- Pengajuan memvalidasi pemohon, tanggal, jenis cuti, hari kerja, overlap, saldo sesuai kebijakan aktif, dan lampiran jika diwajibkan.
+- Status transisi valid dan idempotent; hanya approver berizin yang dapat memutuskan; permintaan tidak dapat disetujui sendiri bila kebijakan melarang.
+- Approval/rejection/cancel dan pembaruan saldo berlangsung atomic; race condition tidak menyebabkan saldo negatif/duplikasi transaksi.
+- Saldo memiliki ledger/audit yang dapat direkonsiliasi dengan accrual, carry-over, adjustment, dan pemakaian; aturan tiap kategori, batas, kalender, dan effective date **TBD** dan perlu sign-off HR/legal.
+- Karyawan hanya melihat saldo dan permintaannya sendiri; manager melihat cakupan tim yang diizinkan.
+- Notifikasi/status aktual tidak diklaim terkirim sampai provider delivery terkonfigurasi dan ada bukti hasil.
+
+#### E. Payroll dan self-service payslip
+
+**Status baseline:** periods, entries, process/lock, self-service scope, dan engine PPh 21/progressive serta BPJS caps dengan golden tests tercatat. Aturan belum versioned; UAT legal, statutory export, THR/adjustment konfigurabel, audit preview, serta PDF payslip binary belum selesai.
+
+**Story E1 —** Sebagai payroll operator, saya ingin memproses periode dengan input dan aturan yang dapat ditinjau sebelum finalisasi.
+
+**Acceptance criteria**
+- Payroll period memiliki lifecycle dan transisi eksplisit: draft/preview, review/approval, processed, locked (nama/status final disepakati). Record terkunci tidak dapat dimutasi tanpa prosedur koreksi berizin.
+- Hasil tiap karyawan dapat ditelusuri ke input, komponen earnings/deductions, versi aturan, pembulatan, dan kalkulasi; preview tidak mengubah payroll final.
+- Proses batch atomic atau dapat dipulihkan dengan status eksplisit; idempotency mencegah double processing/payment/export.
+- Engine memiliki golden test untuk kasus batas dan tahun/periode pajak, regression test, rekonsiliasi jumlah; hasil UAT ditandatangani pemilik payroll dan penasihat legal/pajak sebelum produksi.
+- Peraturan, tarif, cap, PTKP, BPJS, THR, prorata, koreksi, effective-date, dan versi perhitungan dikonfigurasi/ditinjau sebagai data versioned, bukan klaim angka hardcoded selalu berlaku. Nilai final **TBD**; rujuk peraturan resmi yang berlaku pada tanggal efektif.
+- Pemisahan tugas dan approval payroll/lock, akses field kompensasi, proses pembayaran bank, dan format statutory export ditetapkan dengan Finance; pembayaran aktual bukan bagian tersedia sampai integrasi disetujui.
+- Karyawan hanya dapat membaca payslip dirinya; PDF/CSV export tidak membocorkan record lain, dan file memiliki kontrol akses/audit.
+- Setiap proses, approval, lock, koreksi, dan export tercatat; audit trail tidak menyimpan data rahasia yang tidak diperlukan.
+
+#### F. Expenses / reimbursement
+
+**Status baseline:** expense API dan approve/reject routes, atomic sequence untuk nomor klaim tercatat; cakupan kebijakan dan integrasi payout perlu diverifikasi/ditetapkan.
+
+**Story F1 —** Sebagai karyawan, saya ingin mengajukan klaim dan melihat keputusan; sebagai approver, saya ingin meninjaunya sesuai kebijakan.
+
+**Acceptance criteria**
+- Submit memvalidasi kategori, tanggal, jumlah, mata uang, deskripsi, bukti, dan duplikasi sesuai aturan organisasi.
+- Status/approval hanya dapat diubah oleh aktor berizin; keputusan, komentar, dan perubahan tercatat; akses bukti dibatasi.
+- Kebijakan limit, chain approver, pajak, reimbursement, mata uang, integrasi pembayaran, retention bukti, dan SLA **TBD**.
+- Export dan laporan menghormati tenant/permission; payout tidak diklaim otomatis sebelum integrasi tersedia.
+
+#### G. Recruitment
+
+**Status baseline:** vacancy, candidate, interview, notes API dan permission tercatat tersedia; keseluruhan alur/retensi perlu disepakati.
+
+**Story G1 —** Sebagai recruiter, saya ingin mengelola vacancy dan tahapan kandidat tanpa membuka data kandidat ke pihak yang tidak berwenang.
+
+**Acceptance criteria**
+- Vacancy/candidate/interview/note tersimpan, tervalidasi, tenant-scoped, dan berubah melalui status transition yang sah.
+- Candidate PII dibatasi ke izin recruitment; audit mencatat akses/perubahan yang relevan.
+- Pipeline/tahap, sumber kandidat, consent, retention/deletion, portal kandidat, komunikasi, dan integrasi job board **TBD**; jangan menyatakan sistem merekrut/pengiriman email otomatis tanpa implementasi.
+
+#### H. Onboarding, documents, notification dan email
+
+**Status baseline:** onboarding records/tasks dan atomic create/task transitions; checklist template API; document/request/template dasar; notification in-app dan durable delivery queue/provider-neutral worker boundary; bulk email outbox/queue tersedia. Audit menyatakan hubungan checklist dengan employee belum lengkap, storage-backed document versioning belum, dan provider/worker dispatch belum dikonfigurasi; pesan email/SMS masih pending.
+
+**Story H1 —** Sebagai HR, saya ingin membuat onboarding dan meminta dokumen dengan checklist yang terhubung ke karyawan.
+
+**Acceptance criteria**
+- Onboarding record terhubung ke employee, memiliki template versi tertentu, task owner/due date/status, dan lifecycle; task completion/overall completion atomic serta idempotent.
+- Document request memiliki pemohon, karyawan, jenis dokumen, due date, status, dan audit; status transisi hanya aktor berizin.
+- Upload, download, ukuran/tipe file, malware scanning, encryption, retensi, versioning, storage provider, signed URL, dan permission perlu ditentukan sebelum storage production; file sensitif tak boleh disimpan sebagai URL publik.
+- Template checklist/dokumen dapat dikelola, diarsipkan, dan dipakai untuk workflow baru tanpa mengubah histori yang telah dibuat.
+- Reminder/notifikasi hanya menyatakan queued/sent/delivered sesuai state aktual; retry idempotent, lease/claim mencegah double send, kegagalan dan dead-letter dapat dipantau.
+- Integrasi email/SMS/push **TBD**; delivery provider, consent, sender/domain, bounce/complaint handling, retry policy, dan observability disetujui sebelum mengaktifkan worker.
+
+#### I. Offboarding
+
+**Status baseline:** record, clearance tasks, atomic completion RPC, UI operasional, serta settlement estimate tersedia parsial; statutory settlement, PDF report, dan archived history belum lengkap.
+
+**Story I1 —** Sebagai HR, saya ingin mengelola proses keluar karyawan dengan tugas clearance dan rekonsiliasi yang dapat diaudit.
+
+**Acceptance criteria**
+- Offboarding terhubung ke employee dan menyimpan alasan/tanggal efektif/owner/status sesuai field access policy.
+- Clearance task ditetapkan ke pemilik, memiliki status/bukti/riwayat; penyelesaian keseluruhan atomic dan menolak prasyarat yang belum terpenuhi bila kebijakan mengharuskan.
+- Settlement merupakan estimasi sampai seluruh input, aturan versi, approval, dan rekonsiliasi legal/payroll diverifikasi; UI wajib memberi label estimasi.
+- Menjaga histori read-only sesuai retention; akses record setelah termination dibatasi sesuai kebijakan, tanpa menghilangkan kewajiban audit.
+- PDF/export dan statutory settlement belum dinyatakan tersedia sampai implementasi dan test selesai.
+
+#### J. Reports, dashboard, audit, settings
+
+**Status baseline:** dashboard/report aggregation dan report generation/history/export CSV/JSON/PDF/XLSX tercatat di audit sebagai teruji pada subset smoke; settings persistence dan audit-log scoping tersedia. Audit coverage lengkap lintas route dan permission tetap perlu diuji.
+
+**Story J1 —** Sebagai manager/HR/Finance, saya ingin membuat laporan dari data yang berhak saya lihat dan mengetahui sumber/periodenya.
+
+**Acceptance criteria**
+- Laporan menampilkan definisi metrik, periode, timezone, waktu pembuatan, filter, dan sumber data; agregat konsisten dengan data sumber.
+- Filter, preview, history, dan setiap format export menerapkan tenant, permission, dan field-level rules yang sama seperti UI/API.
+- File export memiliki masa berlaku/akses sesuai kebijakan, tidak dapat diakses publik, dan dicatat; format yang didukung diuji validitas MIME/content, bukan hanya response status.
+- Data report sensitif tidak boleh bocor melalui cache, error, nama file, atau share link. Share link tidak aktif kecuali autentikasi/expiry/revocation disepakati.
+- Audit log mencatat aksi sensitif dengan filter server-side; hanya viewer berizin dapat mencari. Retensi dan tamper-resistance **TBD**.
+- Settings GET/PATCH memvalidasi schema/size, permission, tenant, dan persistence; perubahan setting yang memengaruhi payroll/workflow perlu effective date/version dan audit.
+
+### 2.4 Kebutuhan lintas fitur
+
+- **API contract:** respons validasi konsisten, pagination/filter/sort dibatasi, status code jelas, correlation ID, dan schema diuji. Versioning/backward-compatibility policy **TBD**.
+- **Workflow:** setiap mutasi menolak transisi ilegal, mendukung retry aman/idempotency bila sesuai, dan menyimpan aktor/waktu/hasil.
+- **Bulk actions:** preview, authorization per record, validasi batas, laporan sukses/gagal, serta batas waktu/ukuran yang terdokumentasi.
+- **Accessibility & usability:** keyboard access, label/focus/error semantics, kontras WCAG AA sebagai target verifikasi, serta responsive layout; audit/usability baseline belum ditetapkan.
+- **Localization:** Bahasa Indonesia sebagai bahasa dokumen/produk awal yang tampak di UI; dukungan bahasa lain, locale format dan timezone per organisasi **TBD**.
+- **Observability:** structured logs, correlation ID, health endpoint dan recovery procedure sudah teridentifikasi; alerting, dashboard SLO, privacy-safe metrics dan incident runbook diperluas sebagai target.
+
+### 2.5 Non-Goals
+
+- Bukan payroll bank/payment processor atau pengganti persetujuan bank, kecuali proyek integrasi terpisah disetujui.
+- Tidak memberikan nasihat hukum/pajak dan tidak menjamin kepatuhan hanya karena aplikasi menghitung nilai; validasi aturan oleh pemilik bisnis dan penasihat kompeten wajib.
+- Bukan ATS publik/portal kandidat, LMS, performance management, workforce scheduling, biometric attendance, atau ERP lengkap kecuali diprioritaskan sebagai scope baru.
+- Tidak mengirim email/SMS/push, mengunggah dokumen ke penyimpanan eksternal, atau mengintegrasikan SSO/SCIM sebelum provider dan kebijakan disetujui.
+- Tidak membangun fitur generative AI/automated decisions pada tahap ini.
+- Tidak mengasumsikan multi-country, multi-currency, kapasitas tenant, SLA, atau target performa tertentu tanpa keputusan stakeholder.
 
 ## 3. AI System Requirements
 
-> **Not applicable for v1.0** — HRIS v1.0 is a traditional CRUD/workflow system. AI features planned for v2.0:
-> - Intelligent document extraction (OCR for KTP, ijazah)
-> - Anomaly detection in attendance data
-> - Chatbot for employee FAQ (leave balance, policy)
-> - Predictive turnover analytics
+**Tidak berlaku untuk target produk saat ini.** Repository yang ditinjau tidak menunjukkan fitur AI sebagai kapabilitas produk yang harus digunakan untuk mengelola data HR. Tidak ada model, prompt, tool-use, atau evaluasi model yang menjadi dependensi requirement.
 
----
+Jika AI diajukan kelak, itu memerlukan PRD/change approval tersendiri, tujuan dan human oversight, dasar pemrosesan data karyawan/kandidat, provider/data residency, opt-out, retention, threat model, evaluasi bias/akurasi, sumber/citation, audit, serta larangan keputusan otomatis berdampak tinggi sebelum legal/HR menyetujuinya.
 
 ## 4. Technical Specifications
 
-### 4.1 Technology Stack
+### 4.1 Arsitektur: kondisi saat ini dan target
 
-| Layer | Technology | Version | Justification |
-|-------|-----------|---------|---------------|
-| **Frontend Framework** | Next.js (React) | 14+ | SSR for dashboard performance, App Router, server components |
-| **UI Library** | shadcn/ui | latest | Accessible, customizable, Tailwind-native |
-| **Styling** | Tailwind CSS | 3.4+ | Utility-first, consistent design system |
-| **Charting** | Recharts | 2.x | React-native, composable charts |
-| **State Management** | TanStack Query + Zustand | latest | Server state caching + client state |
-| **Backend Framework** | FastAPI | 0.110+ | Async Python, auto OpenAPI docs, high performance |
-| **ORM** | SQLAlchemy 2.0 + Alembic | 2.0+ | Mature, async support, migration management |
-| **Database** | PostgreSQL | 15+ | ACID, row-level security, JSONB support |
-| **Cache** | Redis | 7+ | Session, rate limiting, background job queue |
-| **File Storage** | AWS S3 | — | Employee documents, exports |
-| **Background Jobs** | Celery + Redis | 5.x | Payroll processing, notifications, scheduled tasks |
-| **Email** | AWS SES + Jinja2 templates | — | Transactional emails, cost-effective |
-| **Search** | PostgreSQL FTS (full-text) | — | Sufficient for v1.0; Meilisearch for v2.0 |
-| **Auth** | JWT (jose) + OAuth2 | — | Access + refresh tokens, Google SSO (optional) |
-| **Monitoring** | Sentry + AWS CloudWatch | — | Error tracking + infrastructure metrics |
-| **Containerization** | Docker + Docker Compose | — | Consistent dev/prod environments |
-| **CI/CD** | GitHub Actions | — | Automated test + deploy pipeline |
-| **Hosting** | AWS (ECS Fargate / EC2) | — | Managed containers, auto-scaling |
-| **Database Hosting** | AWS RDS PostgreSQL | — | Managed, automated backups, encryption |
+**Kondisi kode saat ini (baseline, perlu dijaga tetap akurat):**
 
-### 4.2 Architecture Overview
+- UI dan server API: Next.js 14, React 18, TypeScript, Tailwind CSS; route handlers berada di `frontend/src/app/api/**`.
+- Data persistence utama: Supabase Postgres, client `@supabase/supabase-js`; migrasi SQL berada di `supabase/migrations/`.
+- API server memvalidasi bearer JWT dengan `jose`, membaca user/membership/permissions, lalu menggunakan Supabase service-role dari server. Akses memakai permission checks dan predicate `organization_id`; RLS defense-in-depth menolak akses langsung client pada tabel tenant.
+- Terdapat backend FastAPI/Python legacy, Docker Compose, Redis/Celery, serta deployment manifests Render/Railway di repository. Keberadaan konfigurasi tersebut **bukan** bukti bahwa semua traffic/fitur produksi saat ini menggunakannya. README dan beberapa manifest belum selaras dengan arsitektur Next.js/Supabase aktual; sumber kebenaran runtime/deployment dan rencana konsolidasi **TBD**.
+- Vercel config menjalankan build frontend Next.js; CI menjalankan frontend typecheck/lint/build, backend pytest, dan smoke test produksi. Backend FastAPI dirawat/diaktifkan atau dipensiunkan perlu keputusan eksplisit.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        CLIENTS                              │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐                 │
-│  │ Desktop  │  │  Tablet  │  │  Mobile  │                 │
-│  │ Browser  │  │ Browser  │  │ Browser  │                 │
-│  └────┬─────┘  └────┬─────┘  └────┬─────┘                 │
-└───────┼──────────────┼──────────────┼────────────────────────┘
-        │              │              │
-        ▼              ▼              ▼
-┌─────────────────────────────────────────────────────────────┐
-│              AWS CloudFront (CDN + SSL Termination)         │
-│              → Next.js Frontend (Static / SSR)              │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
-                       ▼ API calls
-┌─────────────────────────────────────────────────────────────┐
-│              AWS ALB (Application Load Balancer)             │
-│              → FastAPI Backend (ECS Fargate)                 │
-│                                                             │
-│  ┌─────────────┐  ┌──────────────┐  ┌──────────────────┐   │
-│  │  Auth       │  │  Business    │  │  Background      │   │
-│  │  (JWT/OAuth)│  │  Services    │  │  Workers         │   │
-│  │             │  │  (FastAPI)   │  │  (Celery)        │   │
-│  └──────┬──────┘  └──────┬───────┘  └────────┬─────────┘   │
-│         │                │                    │             │
-└─────────┼────────────────┼────────────────────┼─────────────┘
-          │                │                    │
-          ▼                ▼                    ▼
-┌─────────────────────────────────────────────────────────────┐
-│                      DATA LAYER                             │
-│  ┌──────────────┐  ┌──────────┐  ┌──────────────────┐      │
-│  │ PostgreSQL   │  │  Redis   │  │  AWS S3          │      │
-│  │ (AWS RDS)    │  │ (Cache + │  │  (Document       │      │
-│  │ Primary +    │  │  Queue)  │  │   Storage)       │      │
-│  │ Read Replica │  │          │  │                  │      │
-│  └──────────────┘  └──────────┘  └──────────────────┘      │
-└─────────────────────────────────────────────────────────────┘
-```
+**Target arsitektur:**
 
-### 4.3 Data Flow: Payroll Processing
+1. Browser mengirim request ke Next.js API boundary; server memvalidasi identitas/session, status membership, permission, dan organisasi.
+2. Service/domain layer memvalidasi input dan business state; operasi kritis memakai constraint/RPC/transaksi database untuk atomicity dan idempotency.
+3. Server mengakses Supabase Postgres dengan kredensial server-only dan organisasi wajib sebagai predicate; RLS tetap sebagai pertahanan tambahan, bukan satu-satunya policy jika service role bypass RLS.
+4. Integrasi eksternal, bila disetujui, melewati adapter/queue durabel dengan secret management, retry yang aman, observability, serta status delivery nyata. Provider belum diasumsikan.
+5. File/dokumen menggunakan object storage private dan URL temporer setelah provider, scanning, retention, encryption dan authorization ditetapkan.
+6. Deployment, database migration, secret, backup/restore, dan rollback mengikuti satu jalur yang didukung; pilihan hosting dan ownership operasional **TBD**.
 
-```
-1. HR Officer clicks "Run Payroll" for period YYYY-MM
-         │
-         ▼
-2. Backend validates: no duplicate run for period
-         │
-         ▼
-3. Celery task triggered (async)
-   ├── Fetch attendance data for period
-   ├── Fetch active employees
-   ├── For each employee:
-   │   ├── Calculate base earnings
-   │   ├── Calculate overtime (from attendance)
-   │   ├── Calculate variable components (bonus, commission)
-   │   ├── Calculate deductions:
-   │   │   ├── BPJS Kesehatan (ceiling check)
-   │   │   ├── BPJS Ketenagakerjaan (JHT + JP)
-   │   │   ├── PPh 21 (annualizing method)
-   │   │   └── Manual deductions (loan, absence)
-   │   └── Net pay = Earnings - Deductions
-   └── Store payroll_items in DB
-         │
-         ▼
-4. HR Manager reviews → Approve
-         │
-         ▼
-5. Generate outputs:
-   ├── Payslips (PDF, per employee)
-   ├── Bank transfer file (CSV per bank)
-   ├── PPh 21 report (Excel)
-   ├── BPJS report (Excel)
-   └── Payroll summary (Excel)
-         │
-         ▼
-6. Notification: "Payroll for YYYY-MM is ready" → all employees
-```
+### 4.2 Domain dan data
 
-### 4.4 Integration Points
+Migrasi saat ini menunjukkan kelompok entitas inti berikut (daftar bukan skema lengkap):
 
-| Integration | Protocol | Direction | Priority |
-|-------------|----------|-----------|----------|
-| **Fingerprint Device** | REST API (polling) | Inbound | High (v1.1) |
-| **Google SSO** | OAuth 2.0 | Inbound | Medium |
-| **AWS SES** | AWS SDK | Outbound | High |
-| **AWS S3** | AWS SDK | Bidirectional | High |
-| **Bank Transfer File** | CSV export | Outbound | High |
-| **BPJS Report** | Excel export | Outbound | Medium |
-| **PPh 21 / DJP** | Excel export | Outbound | Medium |
+- Tenant/access: `organizations`, `users`, `organization_memberships`, `roles`, `permissions`, `role_permissions`, `user_sessions`.
+- Workforce: `employees`, `departments`, `positions`, `attendance_records`, `leave_requests`, `leave_balances`.
+- Lifecycle: `onboarding_records`, `onboarding_tasks`, `checklist_templates`, `offboarding_records`, `offboarding_tasks`, `documents`, `document_requests`.
+- Payroll/finance: `payroll_periods`, `payroll_entries`, `expense_claims`, `organization_counters`.
+- Recruitment: `recruitment_vacancies`, `recruitment_candidates`.
+- Operasional/audit: `notifications`, `notification_deliveries`, `email_outbox`, `audit_logs`, `report_generations`, `organization_settings`.
 
-### 4.5 API Design
+Target data requirements:
+- Setiap data organisasi memiliki hubungan tenant yang enforceable; relasi antar record wajib menolak referensi lintas tenant.
+- Gunakan database constraints untuk uniqueness, status, foreign key, dan invariants yang berlaku lintas request; nomor bisnis dihasilkan atomically per organisasi.
+- Catat waktu simpan sebagai timestamp konsisten dan tanggal bisnis sesuai timezone/policy yang ditetapkan; perlakuan effective-date perlu eksplisit.
+- Definisikan klasifikasi field (PII, payroll, candidate, dokumen), field-level permission, retention/deletion, legal hold, backup, dan akses support sebelum produksi luas.
+- Skema migration dapat diulang/ditinjau, punya strategi deploy/backfill/rollback yang diuji; data migration antarsistem sumber **TBD**.
 
-**Conventions:**
-- Base URL: `/api/v1/`
-- Format: RESTful JSON
-- Auth: Bearer JWT (access token: 15min, refresh token: 7 days)
-- Pagination: `?page=1&per_page=20` (default), cursor-based optional
-- Filtering: `?status=active&department_id=xxx`
-- Sorting: `?sort=created_at&order=desc`
-- Date format: ISO 8601
-- Error format: `{ "detail": "message", "code": "ERROR_CODE" }`
+### 4.3 API dan integrasi
 
-**Key Endpoint Groups (80+ endpoints):**
+API route families terdeteksi di kode meliputi auth, attendance, audit-log, dashboard, departments, checklist, documents/requests/templates, employees/import/bulk-email, expenses, leave/balances, notifications/deliveries, offboarding/settlement, onboarding/tasks, payroll/periods/self-service, positions, recruitment, reports/export/generations, settings, dan health. Daftar route aktual dapat berubah; lihat `frontend/src/app/api/`.
 
-```
-Auth:           POST /auth/login, /refresh, /logout, /forgot-password
-Employees:      CRUD /employees, /employees/:id, /employees/import
-Departments:    CRUD /departments, /departments/:id/members
-Positions:      CRUD /positions
-Attendance:     GET /attendance, POST /check-in, POST /check-out, PUT /:id
-Leave:          CRUD /leave-requests, PUT /:id/approve, GET /balance/:emp_id
-Payroll:        POST /payroll/runs, GET /runs/:id, PUT /runs/:id/approve
-                GET /payslip/:emp_id/:period
-Expenses:       CRUD /expenses, PUT /:id/approve
-Recruitment:    CRUD /jobs, GET /jobs/:id/applicants, PUT /applicants/:id/stage
-Onboarding:     GET /onboarding/:emp_id, PUT /tasks/:id/complete
-Offboarding:    POST /offboarding, GET /clearance/:emp_id
-Documents:      POST /documents/upload, GET /documents, GET /:id/download
-Reports:        GET /reports/headcount, /turnover, /attendance, /payroll, /pph21
-Dashboard:      GET /dashboard/kpis, /charts/:type, /alerts
-Settings:       GET/PUT /settings/attendance, /leave-types, /payroll, /company
-Users & Roles:  CRUD /users, /roles, PUT /users/:id/role
-```
+Persyaratan integrasi:
+- **Supabase:** koneksi server-only; least privilege, RLS/policies, migrations, backup/PITR sesuai plan dan restore drill; konfigurasi secret melalui environment secret manager.
+- **Identity/auth:** skema JWT/session yang dipelihara server, revocation, expiry/rotation, proteksi brute-force/rate limiting, recovery, MFA/SSO/SCIM sebagai keputusan roadmap. Jangan mencatat bearer token atau credential.
+- **Notification/email:** provider dan worker belum dianggap aktif. Tentukan provider, consent, template, retry, deduplication, bounce, DLQ, observability, dan status kontrak sebelum enable.
+- **Document storage:** belum teridentifikasi sebagai storage production. Pilih provider, enkripsi, upload validation, malware scan, signed access, lifecycle/retention, dan biaya sebelum digunakan.
+- **Payroll/bank/tax:** format statutory, bank payout, tax reporting, dan konektor pemerintah belum dianggap ada. Tentukan counterpart, sertifikasi/otorisasi, reconciliation, dan UAT terpisah.
+- **Legacy Python stack:** keputusan integrasi atau sunset; hindari dua backend yang memiliki business truth/ownership migrasi tumpang tindih.
 
-### 4.6 Database Schema (Key Entities)
+### 4.4 Security, Privacy & Compliance
 
-```sql
--- Employees (core)
-CREATE TABLE employees (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    employee_id VARCHAR(20) UNIQUE NOT NULL,  -- EMP-YYYYMMDD-XXX
-    -- Personal data
-    full_name VARCHAR(200) NOT NULL,
-    nik VARCHAR(16) UNIQUE,
-    npwp VARCHAR(20) UNIQUE,
-    place_of_birth VARCHAR(100),
-    date_of_birth DATE,
-    gender VARCHAR(20),
-    blood_type VARCHAR(5),
-    religion VARCHAR(50),
-    marital_status VARCHAR(20),
-    phone VARCHAR(20),
-    email VARCHAR(200) UNIQUE,
-    address_ktp TEXT,
-    address_domisili TEXT,
-    emergency_contact_name VARCHAR(200),
-    emergency_contact_phone VARCHAR(20),
-    emergency_contact_relation VARCHAR(50),
-    -- Employment data
-    join_date DATE NOT NULL,
-    contract_start DATE,
-    contract_end DATE,
-    probation_end DATE,
-    employment_status VARCHAR(20) NOT NULL,  -- contract, permanent, outsourcing
-    employment_type VARCHAR(20) DEFAULT 'full-time',
-    department_id UUID REFERENCES departments(id),
-    position_id UUID REFERENCES positions(id),
-    reporting_to UUID REFERENCES employees(id),
-    branch VARCHAR(100),
-    -- Compensation
-    base_salary NUMERIC(15,2),
-    bank_name VARCHAR(100),
-    bank_account VARCHAR(50),
-    bank_account_name VARCHAR(200),
-    bpjs_kesehatan_no VARCHAR(30),
-    bpjs_ketenagakerjaan_no VARCHAR(30),
-    -- Status
-    status VARCHAR(20) DEFAULT 'active',  -- active, inactive, terminated
-    -- Metadata
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    created_by UUID,
-    updated_by UUID
-);
+- **Authentication/authorization:** deny-by-default; server-side permission di tiap route dan object-level check. Pastikan session revocation benar-benar enforced untuk semua token, termasuk token lama selama masa migrasi.
+- **Tenant isolation:** scoping pada semua operasi dan ekspor, validasi tenant pada relasi, regression tests lintas tenant; RLS deny client access menjadi defense-in-depth. Service-role key tidak pernah tersedia ke browser.
+- **Browser/session:** pindahkan token dari localStorage bila memungkinkan ke mekanisme cookie HttpOnly/Secure/SameSite dengan mitigasi CSRF; dokumentasikan threat model, expiry, refresh, logout, XSS controls, rate limit dan account recovery.
+- **Sensitive data:** minimisasi data, TLS in transit, encryption at rest sesuai provider, redaksi logs, secrets management, backup/restore access controls, retention/deletion schedule, breach response, dan audit akses. Durasi/standar teknis **TBD**.
+- **Auditability:** event log untuk perubahan payroll, izin, employee record sensitif, workflow, export, serta admin actions; tidak merekam password/token/isi dokumen sensitif. Hak baca audit dan retention harus didefinisikan.
+- **Compliance:** perlakukan aturan Indonesia (ketenagakerjaan, perpajakan, jaminan sosial, privasi/data pribadi) sebagai requirement yang perlu legal review untuk cakupan bisnis dan effective date. Dokumen ini bukan nasihat hukum dan tidak mengunci angka tarif/ambang. Data residency, DPIA/assessment, dasar pemrosesan, retention dan mekanisme hak subjek data perlu disetujui pihak berwenang.
+- **Security verification:** dependency scanning, secret scanning, migration review, authorization/IDOR tests, threat modeling, backup restore drill, incident response exercise, dan penetration test sesuai risk/contract; jadwal/cakupan TBD.
 
--- Departments
-CREATE TABLE departments (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(200) NOT NULL,
-    code VARCHAR(20) UNIQUE NOT NULL,
-    parent_id UUID REFERENCES departments(id),
-    head_id UUID REFERENCES employees(id),
-    cost_center VARCHAR(50),
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
+### 4.5 Reliability, performance, accessibility dan test strategy
 
--- Positions
-CREATE TABLE positions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    title VARCHAR(200) NOT NULL,
-    code VARCHAR(20) UNIQUE NOT NULL,
-    level INTEGER,
-    grade VARCHAR(10),
-    department_id UUID REFERENCES departments(id),
-    min_salary NUMERIC(15,2),
-    max_salary NUMERIC(15,2),
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
+SLO numerik belum disepakati, maka availability, latency, throughput, batch size selain batas yang sudah ada, RPO/RTO dan recovery window target **TBD**. `docs/RECOVERY.md` memuat prosedur/target operasional saat ini; stakeholder harus menyetujui target sebelum menjadikannya kontrak produk.
 
--- Attendance Records
-CREATE TABLE attendance_records (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    employee_id UUID NOT NULL REFERENCES employees(id),
-    date DATE NOT NULL,
-    check_in TIMESTAMPTZ,
-    check_out TIMESTAMPTZ,
-    status VARCHAR(20) NOT NULL,  -- present, late, early_leave, absent, wfh, leave
-    overtime_hours NUMERIC(5,2) DEFAULT 0,
-    late_minutes INTEGER DEFAULT 0,
-    source VARCHAR(20) DEFAULT 'web',  -- web, manual, fingerprint, api
-    notes TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(employee_id, date)
-);
+Target pengujian sebelum fitur dinyatakan selesai:
+- **Unit/domain:** schema validation, permission decisions, state transitions, payroll calculations, date/rounding, atomic sequence, parsers/import mapping.
+- **Integration/database:** migrasi bersih dan upgrade, constraints/RPC atomicity, RLS, tenant scoping, rollback/failure/retry.
+- **API/security:** unauth/forged/revoked, role & field access, IDOR, cross-tenant reads/writes, pagination/export and bulk operations.
+- **E2E:** user journey utama per persona, state loading/error/empty, refresh persistence, unauthorized action, screen reader/keyboard basics.
+- **Payroll acceptance:** versioned golden cases dan rekonsiliasi; business/legal sign-off per rule version before use.
+- **Operational:** health, logs/correlation, alert delivery, queue stuck/DLQ, backup restore, deployment/migration rollback.
+- CI baseline currently includes frontend checks/build, backend pytest, and production smoke. Extend CI to deterministic database-backed integration/E2E without mutating production; clarify ownership and test environment.
 
--- Leave Requests
-CREATE TABLE leave_requests (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    employee_id UUID NOT NULL REFERENCES employees(id),
-    leave_type VARCHAR(10) NOT NULL,  -- AL, SL, PL, ML, PT, BL, MR, HJ, UL, CB
-    start_date DATE NOT NULL,
-    end_date DATE NOT NULL,
-    total_days NUMERIC(4,1) NOT NULL,
-    reason TEXT,
-    attachment_url VARCHAR(500),
-    status VARCHAR(20) DEFAULT 'pending',  -- pending, approved, rejected
-    approved_by UUID REFERENCES employees(id),
-    approved_at TIMESTAMPTZ,
-    rejection_reason TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
+### 4.6 Constraints & Open Decisions
 
--- Leave Balances
-CREATE TABLE leave_balances (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    employee_id UUID NOT NULL REFERENCES employees(id),
-    leave_type VARCHAR(10) NOT NULL,
-    year INTEGER NOT NULL,
-    total_days NUMERIC(4,1) NOT NULL,
-    used_days NUMERIC(4,1) DEFAULT 0,
-    remaining_days NUMERIC(4,1) GENERATED ALWAYS AS (total_days - used_days) STORED,
-    UNIQUE(employee_id, leave_type, year)
-);
-
--- Payroll Runs
-CREATE TABLE payroll_runs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    period VARCHAR(7) NOT NULL,  -- YYYY-MM
-    status VARCHAR(20) DEFAULT 'draft',  -- draft, processing, calculated, approved, paid
-    processed_by UUID REFERENCES employees(id),
-    approved_by UUID REFERENCES employees(id),
-    paid_at TIMESTAMPTZ,
-    total_employees INTEGER,
-    total_gross NUMERIC(18,2),
-    total_deductions NUMERIC(18,2),
-    total_net NUMERIC(18,2),
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Payroll Items (per employee per run)
-CREATE TABLE payroll_items (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    payroll_run_id UUID NOT NULL REFERENCES payroll_runs(id),
-    employee_id UUID NOT NULL REFERENCES employees(id),
-    -- Earnings
-    base_salary NUMERIC(15,2),
-    fixed_allowances NUMERIC(15,2),
-    variable_allowances NUMERIC(15,2),
-    overtime_pay NUMERIC(15,2),
-    bonus NUMERIC(15,2),
-    commission NUMERIC(15,2),
-    total_earnings NUMERIC(15,2),
-    -- Deductions
-    bpjs_kesehatan NUMERIC(15,2),
-    bpjs_jht NUMERIC(15,2),
-    bpjs_jp NUMERIC(15,2),
-    pph21 NUMERIC(15,2),
-    other_deductions NUMERIC(15,2),
-    total_deductions NUMERIC(15,2),
-    -- Net
-    net_pay NUMERIC(15,2),
-    status VARCHAR(20) DEFAULT 'draft',
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(payroll_run_id, employee_id)
-);
-
--- Expense Claims
-CREATE TABLE expense_claims (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    employee_id UUID NOT NULL REFERENCES employees(id),
-    claim_date DATE NOT NULL,
-    type VARCHAR(50) NOT NULL,
-    amount NUMERIC(15,2) NOT NULL,
-    description TEXT,
-    receipt_url VARCHAR(500),
-    status VARCHAR(20) DEFAULT 'pending',
-    approved_by UUID REFERENCES employees(id),
-    approved_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Job Postings
-CREATE TABLE job_postings (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    title VARCHAR(200) NOT NULL,
-    department_id UUID REFERENCES departments(id),
-    location VARCHAR(200),
-    description TEXT,
-    requirements TEXT,
-    salary_min NUMERIC(15,2),
-    salary_max NUMERIC(15,2),
-    employment_type VARCHAR(20),
-    status VARCHAR(20) DEFAULT 'draft',
-    published_at TIMESTAMPTZ,
-    closed_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Applicants
-CREATE TABLE applicants (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    job_posting_id UUID NOT NULL REFERENCES job_postings(id),
-    full_name VARCHAR(200) NOT NULL,
-    email VARCHAR(200),
-    phone VARCHAR(20),
-    resume_url VARCHAR(500),
-    cover_letter TEXT,
-    source VARCHAR(50),
-    current_stage VARCHAR(50),
-    status VARCHAR(20) DEFAULT 'active',
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Documents
-CREATE TABLE documents (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    employee_id UUID REFERENCES employees(id),
-    category VARCHAR(50) NOT NULL,
-    name VARCHAR(200) NOT NULL,
-    file_type VARCHAR(20),
-    file_url VARCHAR(500) NOT NULL,
-    uploaded_by UUID REFERENCES employees(id),
-    expires_at DATE,
-    version INTEGER DEFAULT 1,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Audit Logs
-CREATE TABLE audit_logs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES employees(id),
-    entity_type VARCHAR(50) NOT NULL,
-    entity_id UUID,
-    action VARCHAR(20) NOT NULL,  -- create, update, delete
-    old_value JSONB,
-    new_value JSONB,
-    ip_address VARCHAR(45),
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Users (auth)
-CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    employee_id UUID REFERENCES employees(id),
-    email VARCHAR(200) UNIQUE NOT NULL,
-    password_hash VARCHAR(200),
-    role VARCHAR(50) NOT NULL DEFAULT 'employee',
-    is_active BOOLEAN DEFAULT TRUE,
-    last_login TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-```
-
-### 4.7 Security & Privacy
-
-**Authentication:**
-- JWT access token (15 min expiry) + refresh token (7 days, httpOnly cookie)
-- Password policy: minimum 8 characters, uppercase + lowercase + number + special
-- Failed login lockout: 5 attempts → lock 15 minutes
-- Optional: Google OAuth 2.0 SSO
-
-**Authorization:**
-- Role-Based Access Control (RBAC) enforced at API middleware level
-- Row-level data filtering: Department Manager sees only own department employees
-- Employee ESS: sees only own data (enforced via `current_user.employee_id` filter)
-- Permission check decorator on every endpoint
-
-**Data Protection:**
-- Encryption at rest: AWS RDS encryption (AES-256), S3 SSE-KMS
-- Encryption in transit: TLS 1.3 enforced
-- Password hashing: bcrypt (12 rounds)
-- Sensitive fields (salary, bank account): application-level encryption (Fernet)
-- PII masked in logs (no NIK, salary in application logs)
-- Audit trail for all CRUD operations on sensitive data
-
-**Compliance:**
-- UU No. 13/2003 Ketenagakerjaan (Indonesian Labor Law)
-- PP 78/2015 (Pengupahan)
-- UU Cipta Kerja (Omnibus Law)
-- Data export capability (GDPR-like right to data portability)
-- Employee data retention: 5 years after termination
-- No cross-border data transfer (data residency: Indonesia region)
-
-### 4.8 Performance Requirements
-
-| Metric | Requirement | Measurement Method |
-|--------|-------------|-------------------|
-| Page load (initial) | ≤ 3 seconds (p50), ≤ 5 seconds (p99) | Lighthouse + Sentry Performance |
-| API response time | ≤ 500ms (p50), ≤ 2 seconds (p99) | FastAPI middleware metrics |
-| Concurrent users | 500 simultaneous | Load test (k6/Locust) |
-| Payroll calculation | ≤ 30 seconds for 1000 employees | Celery task duration metric |
-| Report generation | ≤ 60 seconds for full-month data | Task duration metric |
-| File upload | ≤ 10MB per file, ≤ 50 files bulk | S3 multipart upload |
-| Database queries | ≤ 100ms for operational queries | pg_stat_statements |
-| Dashboard load | ≤ 3 seconds with all widgets | Lighthouse |
-
----
+| Keputusan | Status |
+|---|---|
+| KPI target dan baseline bisnis | TBD |
+| Target segmen/ukuran organisasi serta tenancy packaging | TBD |
+| Jurisdiksi, peraturan yang dicakup, dan legal/payroll sign-off owner | TBD |
+| Source of truth deployment (Vercel/Supabase vs legacy Render/Railway/FastAPI) | TBD |
+| Pertahankan atau sunset backend Python, Redis/Celery | TBD |
+| Penyedia email/SMS, worker, file/object storage, SSO/IdP, bank/payroll connector | TBD |
+| MFA, cookie/session design, token migration window | TBD |
+| Role matrix final, separation of duties, field-level visibility | TBD |
+| Policy leave, attendance, expenses, recruitment retention, onboarding/offboarding | TBD |
+| Timezone, locale, currency, calendar, language | TBD |
+| SLO availability/latency, load envelope, RPO/RTO | TBD |
+| Data retention, privacy notice, deletion/legal hold, residency | TBD |
+| Mobile-native app, candidate portal, integrations tambahan | Out of scope sampai diprioritaskan |
 
 ## 5. Risks & Roadmap
 
-### 5.1 Technical Risks
+### 5.1 Risks and mitigations
 
-| # | Risk | Impact | Probability | Mitigation |
-|---|------|--------|-------------|------------|
-| 1 | PPh 21 calculation errors due to regulatory changes | **Critical** | Medium | Tax calculation as isolated, testable module; unit tests with official DJP test cases; config-driven tax tables |
-| 2 | Payroll data integrity (race conditions during concurrent edits) | **Critical** | Medium | Database-level locks on payroll runs; optimistic locking on payroll items; single-writer pattern for payroll period |
-| 3 | Data security breach (employee PII exposure) | **Critical** | Low | Encryption at rest + transit; RBAC at API level; security audit pre-launch; bug bounty program |
-| 4 | BPJS ceiling/rate changes mid-year | **High** | High | Configurable BPJS rates in admin settings; effectivity-date-based configuration (not hardcoded) |
-| 5 | Fingerprint device integration complexity | **High** | High | Manual attendance input as fallback; device integration in v1.1 (after core is stable) |
-| 6 | User adoption resistance (HR team used to Excel) | **High** | High | Training program, import tools, parallel run period, change management champion |
-| 7 | Scope creep from stakeholder requests | **High** | High | Strict non-goals documented; sprint reviews with stakeholder; change request process |
-| 8 | AWS costs exceeding budget | Medium | Low | Cost monitoring via CloudWatch budgets; right-size instances; use Fargate Spot for non-prod |
+| Risiko | Dampak | Mitigasi / exit criterion |
+|---|---|---|
+| Dokumen lama dan manifest mengklaim stack berbeda dari kode aktif | Keputusan teknis/deployment salah | Tetapkan arsitektur runtime owner, perbarui README/deploy pipeline terpisah, uji jalur deploy dan recovery sebelum rollout |
+| Service role dapat bypass RLS | Kesalahan satu query dapat melintasi tenant | Default scope helper, repository/service boundary, tenant regression matrix, negative tests untuk tiap route, review ekspor/bulk |
+| Token tersimpan di localStorage dan belum semua session legacy revocable | XSS/session persistence dapat membuka data | Threat model, secure cookie migration, revocation/expiry compatibility, rate limit dan tests sebelum production readiness |
+| Aturan payroll berubah dan target compliance belum sign-off | Salah bayar, penalti, hilangnya kepercayaan | Rule versioning/effective date, legal/payroll review, golden cases, preview diff, approval dan rekonsiliasi; jangan aktifkan klaim aturan tanpa sign-off |
+| Halaman/API tidak setara; dummy/placeholder | Pengguna membuat keputusan dari data salah | Source-of-truth API, acceptance test per route/page, hapus fixtures dan inert controls, smoke/E2E evidence |
+| Provider notification/storage belum dipilih | Status palsu atau data sensitif tidak aman | Disable delivery/upload sampai adapter, secret, retry, scanning, privacy dan observability selesai |
+| Backend legacy paralel menambah duplikasi | Perbedaan data, deployment dan patch keamanan | Putuskan boundary atau sunset; satu owner untuk schema, migrations, business logic dan release |
+| Bulk import/export atau report membebani sistem | Timeout, kebocoran, atau partial writes | Batas tervalidasi, streaming/async bila perlu, atomicity/idempotency, load test dan access checks |
+| Migrasi schema/data dan backup tidak teruji | Downtime/data loss | Staging rehearsal, backup/PITR dan restore drill, rollback/forward-fix plan, monitoring pascadeploy |
+| Belum ada target SLO dan capacity envelope | Sulit menentukan kesiapan produksi | Baseline telemetry, workload model, tetapkan p95/availability/RPO/RTO dengan owner sebelum scale commitment |
 
 ### 5.2 Phased Rollout
 
-#### Phase 1: MVP (Month 1–3) — Core HR Foundation
+Urutan berikut adalah gerbang capability, bukan janji tanggal atau klaim status. Pemilik, estimasi, release date dan nilai target **TBD**. Jangan meluncurkan area payroll/legal atau provider yang belum disetujui.
 
-| Sprint | Deliverables |
-|--------|-------------|
-| **Sprint 1-2** (Week 1-4) | Project setup, auth (JWT), user management, RBAC, employee master data (CRUD + bulk import), org structure |
-| **Sprint 3-4** (Week 5-8) | Attendance management (web check-in, manual input), leave management (request, approval, balance), notifications (email + in-app) |
-| **Sprint 5-6** (Week 9-12) | Basic payroll (calculation, payslip), dashboard (headcount + attendance summary), basic reporting (headcount, attendance, leave balance), data migration tools, UAT |
+#### Phase 0 — Stabilkan sumber kebenaran dan keamanan fondasi
 
-**Phase 1 Exit Criteria:**
-- Employee CRUD operational with bulk import
-- Attendance + Leave workflow end-to-end
-- Basic payroll runs with payslip generation
-- RBAC enforced across all endpoints
-- ≥ 80% unit test coverage on payroll module
-- UAT signed off by HR team
+- Inventaris deployment/runtime, migrasi, secret, env, service-role usage, dan tanggung jawab backend legacy; pilih arsitektur yang didukung.
+- Lengkapi auth/session migration plan, rate limiting, role/permission & field-access matrix; test tenant/IDOR untuk semua route dan export.
+- Tetapkan test database/environment, migration/rollback practice, observability/incident owner, backup restore drill dan SLO baseline.
+- **Exit gate:** architecture/runtime owner ditetapkan; seluruh endpoint privat masuk permission + tenant matrix; critical cross-tenant regression lulus; no production secret exposure; restore drill tercatat.
 
-#### Phase 2: Enhanced Features (Month 4–6)
+#### Phase 1 — Core employee lifecycle operasional
 
-| Sprint | Deliverables |
-|--------|-------------|
-| **Sprint 7-8** | Expense/reimbursement module, advanced attendance (shift scheduling, WFH), document management |
-| **Sprint 9-10** | Recruitment module (ATS, pipeline), onboarding module (checklists, task tracking) |
-| **Sprint 11-12** | Offboarding module, advanced payroll (PPh 21 auto-calc, BPJS auto-calc, THR), advanced reporting (12+ reports, export), fingerprint device integration (v1.1) |
+- Hubungkan directory/detail/profile, manager hierarchy, departments/positions ke API persisten; tuntaskan import preview/atomic reporting.
+- Tuntaskan leave balance ledger/policy, request/approval, onboarding checklist-to-employee, document request lifecycle, dan offboarding task/history.
+- Tuntaskan dashboard/calendar dari data aktual; loading/empty/error/permission states dan accessible flows.
+- **Exit gate:** persona E2E berfungsi, data bertahan setelah refresh, authorization regression lulus, tidak ada fixture pada flow operasional yang dirilis.
 
-**Phase 2 Exit Criteria:**
-- All 12 modules operational
-- Payroll calculates PPh 21 and BPJS automatically
-- Recruitment pipeline with kanban view
-- All standard reports available (PDF + Excel)
-- ≥ 80% unit test coverage overall
+#### Phase 2 — Payroll dan finance dengan sign-off
 
-#### Phase 3: Scale & Optimize (Month 7–9)
+- Versioning/effective-date payroll rules, audit preview, maker-checker/approval, correction/lock, payroll reconciliation, payslip file access, dan export sesuai spesifikasi.
+- Validasi leave/attendance inputs dan expense policy/alur approval dengan owner HR/Finance.
+- Lakukan golden tests, staging payroll comparison, UAT dan legal/tax review; siapkan statutory/bank integration hanya bila disetujui.
+- **Exit gate:** payroll owner dan reviewer menyetujui rule version serta hasil rekonsiliasi; pemisahan tugas, audit, rollback/correction dan access checks lulus; integrasi pembayaran tidak tersirat bila belum ada.
 
-| Sprint | Deliverables |
-|--------|-------------|
-| **Sprint 13-14** | SSO integration (Google), advanced search, performance optimization, load testing |
-| **Sprint 15-16** | Executive dashboard (full analytics), mobile-responsive optimization, API documentation portal |
-| **Sprint 17-18** | Audit & compliance reporting, production hardening, disaster recovery setup, documentation |
+#### Phase 3 — Integrasi, kontrol operasional dan scale
 
-**Phase 3 Exit Criteria:**
-- System handles 500 concurrent users (load test)
-- All P0/P1 bugs resolved
-- Security audit passed
-- Disaster recovery tested (backup + restore)
-- Production deployment with monitoring + alerting
+- Pilih serta implementasikan email/SMS dan storage melalui provider adapters; aktifkan worker bertahap setelah idempotency, retry/DLQ, consent, scan, access dan observability teruji.
+- Lengkapi laporan, export, share policy, recruitment retention, audit retention, queue operations, performance/load dan accessibility review.
+- Tetapkan scale envelope, SLO, capacity/cost monitoring, support process, tenant onboarding/offboarding dan incident response.
+- **Exit gate:** KPI/SLO memiliki owner dan target disetujui; load/security/recovery test lulus; provider failure/retry diuji; rollout dapat dihentikan/di-rollback dengan aman.
 
-### 5.3 Testing Strategy
+### 5.3 Release governance
 
-| Test Type | Tool | Coverage Target |
-|-----------|------|-----------------|
-| Unit Tests | pytest | ≥ 80% overall, ≥ 90% payroll |
-| API Integration Tests | pytest + httpx | ≥ 85% endpoints |
-| E2E Tests | Playwright | Critical user flows |
-| Load Tests | k6 / Locust | 500 concurrent users |
-| Security Tests | OWASP ZAP + manual | Pre-launch audit |
+Setiap fitur berstatus “done” hanya setelah: acceptance criteria spesifiknya lulus; seluruh data operasional persisten; permission/tenant/field access diuji server-side; loading/empty/error states tersedia; perubahan ter-audit; refresh menunjukkan state konsisten; migrasi teruji; CI dan smoke/E2E terkait lulus; dan tidak ada klaim integrasi/kompliance tanpa bukti. Status implementasi harus diperbarui di `FEATURE_AUDIT.md` atau artefak status yang disepakati.
 
-**Critical Test Scenarios:**
-1. Payroll calculation accuracy: 100 employees with various scenarios (overtime, unpaid leave, new hire pro-rata, THR)
-2. PPh 21 accuracy: compare against DJP official calculator
-3. Leave balance: pro-rata new hire, year-end reset, carry-over
-4. RBAC enforcement: each role can only access permitted endpoints/data
-5. Concurrent payroll processing: single-writer lock validation
+### 5.4 Rollout, data migration dan operasi
 
-### 5.4 DevOps & Deployment
+- Deployment bertahap: local/test → staging dengan schema setara → pilot organisasi/data sintetis atau terotorisasi → production rollout bertahap dengan rollback/forward-fix plan. Jadwal dan pilot cohort TBD.
+- Sebelum import data nyata: mapping, deduplication, validation, dry run, backup, access restriction, consent/legal basis, reconciliation totals, exception report, sign-off dan rollback plan.
+- Migrasi tidak boleh mengasumsikan data backend FastAPI dan Supabase identik. Tentukan source of truth, ownership serta rekonsiliasi sebelum cutover.
+- Operasi mencakup health/ready checks, structured logs/correlation, error/queue alerts, access review, backup/PITR, restore drill, incident response, dan audit trail. Jangan log data payroll/PII yang tidak dibutuhkan.
 
-```
-GitHub Actions CI/CD Pipeline:
-  ┌──────┐    ┌──────┐    ┌──────────┐    ┌────────┐    ┌──────────┐    ┌────────────┐
-  │ Lint │───▶│ Test │───▶│ Build    │───▶│ Scan   │───▶│ Deploy   │───▶│ Smoke Test │
-  │(ruff)│    │(pyt) │    │(Docker)  │    │(Trivy) │    │(ECS)     │    │(healthchk) │
-  └──────┘    └──────┘    └──────────┘    └────────┘    └──────────┘    └────────────┘
-                                                                      │
-                                              ┌────────────────────────┘
-                                              ▼
-                                        ┌──────────┐
-                                        │ Manual   │
-                                        │ Approval │ (production only)
-                                        └──────────┘
-```
+## Appendix A — Glossary & Requirement Conventions
 
-**Environment Strategy:**
+| Istilah | Definisi |
+|---|---|
+| Tenant / organization | Batas organisasi pelanggan; akses record dibatasi ke `organization_id` yang tervalidasi. |
+| RBAC / permission | Hak role untuk tindakan tertentu; role membership harus aktif dan berlaku untuk organisasi terkait. |
+| RLS | PostgreSQL Row Level Security; lapisan pertahanan database. Service-role access tetap memerlukan predicate/authorization aplikasi. |
+| ESS | Employee self-service; akses mandiri karyawan atas fungsi/data miliknya sesuai kebijakan. |
+| Atomic | Satu operasi workflow berhasil seluruhnya atau gagal tanpa state parsial yang tidak terdefinisi. |
+| Status tersedia/parsial/target | Label baseline yang dijelaskan di pembuka dokumen; target bukan klaim implementasi. |
+| TBD | Keputusan/baseline belum diberikan; tidak boleh diisi dengan asumsi. |
 
-| Environment | Infrastructure | Purpose |
-|-------------|---------------|---------|
-| **Local** | Docker Compose | Development |
-| **Staging** | AWS ECS (single task) + RDS (db.t3.medium) | Pre-production testing |
-| **Production** | AWS ECS Fargate (2+ tasks) + RDS (db.r6g.large, Multi-AZ) | Live system |
+## Appendix B — Baseline repository dan bukti
 
-**Monitoring Stack:**
-- **Sentry**: Application error tracking + performance monitoring
-- **AWS CloudWatch**: Infrastructure metrics, logs, alarms
-- **UptimeRobot**: External uptime monitoring (HTTP checks every 5 min)
-- **PagerDuty/Slack**: Alert routing for P0/P1 incidents
+- API routes: `frontend/src/app/api/**`; halaman UI: `frontend/src/app/(dashboard)/**`.
+- Auth, permission, tenant scope: `frontend/src/lib/server/auth.ts` dan `frontend/src/lib/server/authorization.ts`.
+- Database changes: `supabase/migrations/`; CI: `.github/workflows/ci.yml`.
+- Status modul dan gap serta smoke evidence: `FEATURE_AUDIT.md`.
+- Current frontend scripts mencakup typecheck, lint, build, smoke, payroll test, dan authz test; Python backend memiliki pytest config/tests. Lulusnya satu subset test tidak berarti seluruh target PRD sudah dipenuhi.
+- Recovery/operational notes: `docs/RECOVERY.md`.
 
-### 5.5 Data Migration Plan
 
-| Phase | Activity | Duration |
-|-------|----------|----------|
-| **1. Audit** | Inventory existing data sources (spreadsheets, old system) | Week 1 |
-| **2. Mapping** | Map source fields → HRIS schema, identify gaps | Week 2 |
-| **3. Cleanse** | Standardize data (dates, phone formats, duplicates) | Week 2-3 |
-| **4. Import** | Bulk import via CSV/Excel wizard | Week 3 |
-| **5. Validate** | HR team verifies imported data (spot check 10%) | Week 4 |
-| **6. Sign-off** | HR Manager approves data accuracy | Week 4 |
+## Appendix C — Implementation Gap Register
 
----
+Matriks berikut merangkum status yang dilaporkan dalam `FEATURE_AUDIT.md` dan koreksi arsitektur/role/schema dari pemeriksaan repository per 28 Sep 2026. “Tersedia” tidak menghapus kebutuhan acceptance test lintas role/tenant yang disebut pada Bagian 2 dan 4. Status harus diperbarui ketika bukti implementasi berubah.
 
-## Appendix A: Indonesian Regulatory Reference
+| Kapabilitas target | Status baseline | Gap / bukti penyelesaian yang masih diperlukan |
+|---|---|---|
+| Tenant foundation, organization scoping, RLS | Tersedia | Pertahankan pemeriksaan semua route, relasi lintas tenant, bulk/export, dan regression matrix; service-role tetap wajib memakai scope aplikasi. |
+| Permission enforcement / role model | Tersedia untuk system role saat ini | Role seed/system: `super_admin`, `hr_director`, `hr_manager`, `hr_officer`, `employee`. `recruiter`, `finance_officer`, `department_manager`, `team_leader` belum seeded; perlakukan sebagai role target, bukan fakta implementasi. Verifikasi field-level dan manager/department row filtering. |
+| Login/session | Parsial | Custom JWT `jose`, bcrypt/bcryptjs, localStorage di client, reload user/membership/permissions dan validasi `jti` pada `user_sessions` untuk token yang memilikinya. MFA/SSO/SCIM/rate limiting dan hardening token belum lengkap; kompatibilitas token lama perlu ditinjau. |
+| Employee API / create / import | Parsial ke tersedia per endpoint | Import CSV/XLSX dengan preview, validasi server, max 1.000 baris dan rollback failure; background import job belum ada. Pastikan end-to-end/detail dan field access lulus. |
+| Employee Directory UI | Parsial | Audit mencatat data roster hardcoded; ganti dengan API/DTO tenant-scoped dan bukti no fixture. |
+| Employee detail UI | Parsial | Audit historis menyebut API-backed/detail slices sudah ada, tetapi audit inventory juga menandai detail placeholder/hardcoded; verifikasi file/UI per route sebelum klaim selesai. Profile, docs, payroll, leave, edit, preview/download harus memakai sumber persisten dan akses sesuai role. |
+| Departments / positions | Tersedia pada API; UI perlu acceptance coverage | Positions CRUD tenant-scoped dan constraint tercatat; uji relasi employee/manager, permission, refresh, serta failure states. |
+| Org chart | Parsial | Team/member API tersedia; hierarchy visualization interaktif (zoom/pan/collapse), validasi siklus dan kedalaman belum lengkap. |
+| Attendance | Tersedia fondasi | API dan unique employee/date constraint tersedia. Kebijakan shift/device/geofence, correction/approval dan calendar integration belum dipastikan. |
+| Calendar | Parsial | Load data attendance/leave/employee tersedia; event types penuh, range query, holiday/company events dan export belum. |
+| Leave requests & balances | Parsial | Read balance serta atomic approval/accounting foundation tersedia; accrual/carry-over/adjustment/ledger policy, effective dating dan legal/HR sign-off belum. |
+| Payroll computation | Parsial | Engine `frontend/src/lib/payroll.ts` meliputi PPh 21, BPJS caps/rates, overtime dan THR; golden tests ada. Rule versioning, legal UAT, configurable statutory rules, statutory export dan audit preview belum. Jangan gunakan angka appendix lama sebagai sumber hukum. |
+| Payroll UI/detail/self-service | Parsial ke tersedia pada slice | Detail API, period process/lock dan employee-scoped self-service tercatat. PDF binary payroll/payslip belum; CSV availability tidak sama dengan PDF delivery atau pembayaran bank. |
+| Expenses | Parsial/terdapat endpoint | API dan approval actions tersedia; verifikasi kebijakan, finance separation-of-duties, attachment security, reconciliation dan payout integration. |
+| Recruitment | Parsial | Vacancy/candidate/interview/notes API dan permission tersedia; lifecycle penuh, kandidat-facing portal, email/job-board provider, consent/retention belum. |
+| Onboarding/checklists | Parsial | Onboarding/task atomic RPC dan checklist template persistence tersedia; checklist-template association ke employee/lifecycle masih perlu diselesaikan dan diuji. |
+| Documents/document requests | Parsial | `documents` menggunakan Supabase Storage bucket yang dibuat migration; request/template dasar dan status transition tersedia. Storage-backed versioning/PDF, upload checklist linkage, delivery notification dan full retention/scanning controls belum. S3 bukan storage terimplementasi saat ini. |
+| Notifications / email delivery / bulk email | Parsial | Durable tenant-scoped queue/outbox dan claim/lease boundary tersedia; provider dispatch/worker belum dikonfigurasi. Pending tidak boleh dilaporkan sebagai sent/delivered. AWS SES bukan integrasi saat ini. |
+| Offboarding | Parsial | Record, clearance tasks, atomic completion, operational UI, settlement estimate tersedia; statutory settlement, PDF report dan archived history belum. |
+| Reports/dashboard/export/history | Sebagian besar tersedia; konfirmasi per kontrak | CSV/JSON/PDF/XLSX, aggregation/trends/preview/history tercatat punya smoke coverage subset. Audit/logging permission, cache isolation, file authorization/expiry dan ketepatan semua format perlu coverage penuh. |
+| Organization settings | Tersedia | Persistence ada; validasi, permission, invalid payload dan size validation telah diuji smoke menurut audit. |
+| Audit log | Tersedia parsial per cakupan | UI/API scoping dan dynamic data tersedia; route-wide event completeness, field redaction, retention dan tamper-resistance belum terbukti. |
+| Data model | Tersedia via migrations | Nama tabel canonical: `organizations`, `users`, `employees`, `departments`, `positions`, `attendance_records`, `leave_requests`, `leave_balances`, `audit_logs`, `payroll_periods`, `payroll_entries`, `expense_claims`, `recruitment_vacancies`, `recruitment_candidates`, `onboarding_records`, `onboarding_tasks`, `checklist_templates`, `documents`, `document_requests`, `offboarding_records`, `offboarding_tasks`, `permissions`, `roles`, `role_permissions`, `organization_memberships`, `user_sessions`, `organization_settings`, `report_generations`, `notifications`, `notification_deliveries`, `email_outbox`, `organization_counters`. |
+| API ownership / backend architecture | Current app API: Next.js handlers + Supabase; FastAPI legacy/secondary | FastAPI `backend/app/main.py` saat ini hanya auth + employee routers; bukan API surface utama aplikasi. Tetapkan keputusan maintain/sunset dan pastikan satu source of truth. |
+| Deployment / infra integrations | Current evidence: Vercel frontend + Supabase; legacy configs exist | Railway/Render/Docker Compose mengonfigurasi backend legacy. AWS ECS/RDS/S3/CloudFront/Celery, Google SSO, fingerprint devices, bank transfer dan CloudWatch/Sentry/PagerDuty/UptimeRobot tidak boleh ditulis sebagai sudah terintegrasi; semuanya target/aspirasi sampai ada bukti runtime dan acceptance. Supabase Storage bucket `documents` adalah storage yang terdeteksi. |
+| Testing / CI | Tersedia dengan cakupan tertentu | `backend` pytest mencakup health dan notification queue/provider; frontend `test:smoke` 17 assertions production-backed, `test:authz`, payroll tests dan query tests tersedia. CI menjalankan frontend typecheck/lint/build, backend pytest dan production smoke. Perlu ekspansi integration/E2E/database/security/load coverage sesuai Bagian 4.5. |
+| Operations / recovery | Fondasi tersedia | JSON structured logs, correlation IDs, `/api/health`, CI dan `docs/RECOVERY.md` tersedia. PITR drill dan bucket versioning tercatat masih pending; jangan klaim backup/restore telah diverifikasi sampai drill evidence ada. |
+| AI features | Tidak berlaku / tidak ada saat ini | Tidak ada target AI dalam scope baseline. Proposal AI memerlukan review privacy, bias, human oversight, dan PRD terpisah. |
 
-### PPh 21 Tax Calculation (2026)
-
-```
-PTKP (Penghasilan Tidak Kena Pajak):
-  TK/0 (single):              Rp 54.000.000/tahun
-  TK/1 (1 dependent):         Rp 58.500.000/tahun
-  K/0 (married):              Rp 58.500.000/tahun
-  K/1 (married + 1):          Rp 63.000.000/tahun
-  K/2:                        Rp 67.500.000/tahun
-  K/3:                        Rp 72.000.000/tahun
-  + Rp 4.500.000 per additional dependent
-
-Progressive Tax Rate:
-  Up to Rp 60.000.000:          0%
-  Rp 60.000.001 - Rp 250.000.000:   5%
-  Rp 250.000.001 - Rp 500.000.000:  10%
-  Rp 500.000.001 - Rp 5.000.000.000: 15%
-  Rp 5.000.000.001 - Rp 10.000.000.000: 20%
-  Above Rp 10.000.000.000:           25%
-
-Annualizing Method:
-  PKP tahunan = (bruto × 12) - PTKP
-  PPh 21 tahunan = hitung progressive tax atas PKP
-  PPh 21 bulanan = PPh 21 tahunan / 12
-```
-
-### BPJS Contribution (2026)
-
-```
-BPJS Kesehatan:
-  Employer: 4% × (Gaji Pokok + Tunjangan Tetap) [max ceiling]
-  Employee: 1% × (Gaji Pokok + Tunjangan Tetap) [max ceiling]
-
-BPJS Ketenagakerjaan:
-  JKK (Jaminan Kecelakaan Kerja): 0.24% (low risk) — 1.74% (high risk)
-  JKM (Jaminan Kematian):         0.30%
-  JHT (Jaminan Hari Tua):         3.70% employer + 2.00% employee
-  JP  (Jaminan Pensiun):          2.00% employer + 1.00% employee [max ceiling]
-
-⚠️ Angka di atas untuk referensi. Selalu update sesuai PMK/PP terbaru.
-```
-
-### THR Calculation (PP 78/2015)
-
-```
-THR = (Gaji Pokok + Tunjangan Tetap) × (Masa Kerja dalam 12 bulan / 12)
-
-Ketentuan:
-  - Wajib dibayarkan maksimal 7 hari sebelum Hari Raya
-  - Karyawan ≥ 12 bulan masa kerja: THR penuh
-  - Karyawan < 12 bulan: pro-rata
-  - Karyawan < 1 bulan: tidak wajib
-```
-
----
-
-## Appendix B: Glossary
-
-| Term | Definition |
-|------|-----------|
-| PKWT | Perjanjian Kerja Waktu Tertentu (Fixed-Term Employment Agreement) |
-| PKWTT | Perjanjian Kerja Waktu Tidak Tertentu (Indefinite Employment Agreement) |
-| THR | Tunjangan Hari Raya (Religious Holiday Allowance) |
-| PPh 21 | Pajak Penghasilan Pasal 21 (Income Tax Article 21) |
-| BPJS | Badan Penyelenggara Jaminan Sosial (Social Security Administrator) |
-| PTKP | Penghasilan Tidak Kena Pajak (Non-Taxable Income) |
-| JHT | Jaminan Hari Tua (Old Age Security) |
-| JP | Jaminan Pensiun (Pension Security) |
-| JKK | Jaminan Kecelakaan Kerja (Work Accident Security) |
-| JKM | Jaminan Kematian (Death Security) |
-| ESS | Employee Self-Service |
-| ATS | Applicant Tracking System |
-| NPS | Net Promoter Score |
-
----
-
-**Document Owner:** Product Team  
-**Last Updated:** 2026-09-21  
-**Next Review:** TBD  
-**PRD Skill:** [github/awesome-copilot — prd](https://github.com/github/awesome-copilot)
+**Catatan nama skema:** nama dari dokumen PRD lama seperti `job_postings`, `applicants`, `payroll_runs`, dan `payroll_items` sudah usang dan bukan nama tabel canonical pada migrations saat ini. Gunakan `recruitment_vacancies`, `recruitment_candidates`, `payroll_periods`, dan `payroll_entries`.
